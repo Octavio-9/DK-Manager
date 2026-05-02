@@ -1,0 +1,155 @@
+.projects-controls {
+    margin-top: 1rem;
+}
+
+.tabs-container {
+    background-color: var(--bg-panel);
+    padding: 0.25rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: white;
+}
+
+.tab-btn.active {
+    background-color: var(--accent-purple);
+    color: white;
+}
+
+.projects-table-full {
+    width: 100%;
+}
+
+.projects-table-full th {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.hover-row:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.shadow-glow {
+    box-shadow: 0 0 10px rgba(157, 59, 241, 0.4);
+}
+
+.bg-hover {
+    background-color: var(--bg-hover);
+}
+
+.text-center {
+    text-align: center;
+}
+
+.block-truncate {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.max-w-xs {
+    max-width: 200px;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.hover-white:hover {
+    color: white;
+}
+
+.page-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: white;
+    font-size: 13px;
+}
+
+.page-btn:hover {
+    background-color: var(--bg-hover);
+}
+
+.page-btn.active {
+    background-color: var(--accent-cyan);
+    color: var(--bg-dark);
+    font-weight: bold;
+}
+
+.metric-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-icon-bg {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.p-0 {
+    padding: 0;
+}
+
+.p-4 {
+    padding: 1rem;
+}
+
+.p-5 {
+    padding: 1.25rem;
+}
+
+.px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+.max-w-full {
+    max-width: 100%;
+}
+
+.italic {
+    font-style: italic;
+}

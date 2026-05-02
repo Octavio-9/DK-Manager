@@ -1,0 +1,116 @@
+.calendar-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.view-toggle {
+    background-color: var(--bg-dark);
+}
+
+.view-toggle button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.view-toggle button.bg-purple {
+    background-color: var(--accent-purple);
+    color: white;
+}
+
+.calendar-grid {
+    background-color: var(--bg-panel);
+}
+
+.calendar-cell {
+    position: relative;
+}
+
+.min-h-\[140px\] {
+    min-height: 140px;
+}
+
+.bg-\[\#15131a\] {
+    background-color: #15131a;
+}
+
+.bg-\[rgba\(157\,59\,241\,0\.05\)\] {
+    background-color: rgba(157, 59, 241, 0.05);
+}
+
+.bg-bg-panel {
+    background-color: var(--bg-panel);
+}
+
+.hover\:bg-hover:hover {
+    background-color: var(--bg-hover);
+}
+
+.border-r {
+    border-right-width: 1px;
+    border-right-style: solid;
+}
+
+.border-l-0 {
+    border-left-width: 0;
+}
+
+.filter-pill {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-pill:hover {
+    background-color: var(--bg-card);
+    border-color: var(--text-muted);
+}
+
+.tracking-wide {
+    letter-spacing: 0.025em;
+}
+
+.text-blue {
+    color: #3b82f6;
+}
+
+.text-green {
+    color: #10b981;
+}
+
+.text-amber {
+    color: #f59e0b;
+}
+
+.text-purple {
+    color: var(--accent-purple);
+}
+
+.min-w-\[50px\] {
+    min-width: 50px;
+}
+
+.text-\[10px\] {
+    font-size: 10px;
+}
+
+.leading-none {
+    line-height: 1;
+}
+
+.hover\:border-light:hover {
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.hover-bg-hover:hover {
+    background-color: var(--bg-hover);
+}

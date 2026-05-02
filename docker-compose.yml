@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: dkpm-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dk_production_manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - dkpm_pgdata:/var/lib/postgresql/data
+
+volumes:
+  dkpm_pgdata:
+

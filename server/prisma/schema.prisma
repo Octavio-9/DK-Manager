@@ -1,0 +1,52 @@
+// Copie du schéma racine pour Prisma (backend).
+// Source de vérité: /prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  avatarBg     String?  @db.VarChar(16)
+
+  projects     Project[]
+}
+
+enum ProjectStatus {
+  PLANNING
+  FILMING
+  EDITING
+  DELIVERED
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  title       String
+  client      String
+  status      ProjectStatus @default(PLANNING)
+  deadline    DateTime?
+  description String?
+
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([deadline])
+  @@index([createdById])
+}
+

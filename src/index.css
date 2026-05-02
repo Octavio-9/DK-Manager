@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors */
+  --bg-dark: #121016;
+  /* Application background */
+  --bg-panel: #1e1b24;
+  /* Sidebar/Card background */
+  --bg-card: #272330;
+  /* Inner card background */
+  --bg-hover: #312c3b;
+  /* Hover state for panels */
+
+  --text-primary: #ffffff;
+  --text-secondary: #a19ea8;
+  --text-muted: #6e6a75;
+
+  --accent-purple: #9d3bf1;
+  --accent-purple-hover: #b057fc;
+  --accent-cyan: #22d3ee;
+
+  /* Status Colors */
+  --status-planning: #f59e0b;
+  /* Yellow/Orange */
+  --status-planning-bg: rgba(245, 158, 11, 0.15);
+  --status-filming: #ef4444;
+  /* Red/Pink */
+  --status-filming-bg: rgba(239, 68, 68, 0.15);
+  --status-editing: #3b82f6;
+  /* Blue */
+  --status-editing-bg: rgba(59, 130, 246, 0.15);
+  --status-delivered: #10b981;
+  /* Green */
+  --status-delivered-bg: rgba(16, 185, 129, 0.15);
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --header-height: 70px;
+
+  /* Typography */
+  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border-0 px-4 py-2 text-sm font-medium transition;
+  }
+
+  .btn-primary {
+    @apply bg-purple text-white hover:shadow-[0_0_10px_rgba(157,59,241,0.4)];
+  }
+
+  .btn-primary:hover {
+    background-color: var(--accent-purple-hover);
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-secondary hover:bg-hover hover:text-primary;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1 text-xs;
+  }
+
+  .badge {
+    @apply rounded px-2 py-1 text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .card {
+    @apply rounded-xl border border-light bg-panel p-6;
+  }
+
+  .input,
+  .search-input {
+    @apply rounded-lg border border-white/10 bg-[#17141d] px-4 py-2.5 text-sm text-white outline-none transition;
+  }
+
+  .input:focus,
+  .search-input:focus {
+    border-color: var(--accent-purple);
+  }
+
+  .app-container {
+    @apply flex h-screen overflow-hidden;
+  }
+
+  .sidebar {
+    width: var(--sidebar-width);
+    @apply flex flex-col border-r border-light bg-panel;
+  }
+
+  .main-wrapper {
+    @apply flex flex-1 flex-col overflow-hidden;
+  }
+
+  .topbar {
+    height: var(--header-height);
+    @apply flex items-center justify-between border-b border-light bg-bg-dark px-8;
+  }
+
+  .content-area {
+    @apply flex-1 overflow-y-auto bg-bg-dark p-8;
+  }
+}

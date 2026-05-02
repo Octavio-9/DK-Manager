@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  avatarBg     String?  @db.VarChar(16)
+
+  projects     Project[]
+  tasks        Task[]
+  notifications Notification[]
+}
+
+enum ProjectStatus {
+  PLANNING
+  FILMING
+  EDITING
+  DELIVERED
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  title       String
+  client      String
+  status      ProjectStatus @default(PLANNING)
+  deadline    DateTime?
+  description String?
+
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  clientId    String?
+  clientRel   Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  tasks       Task[]
+  events      Event[]
+
+  @@index([status])
+  @@index([deadline])
+  @@index([createdById])
+  @@index([clientId])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  title       String
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+
+  projectId   String?
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  assigneeId  String?
+  assignee    User?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([projectId])
+  @@index([assigneeId])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title     String
+  type      String
+  date      DateTime
+  endTime   DateTime?
+  location  String?
+  notes     String?
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([projectId])
+}
+
+enum ClientType {
+  PARTICULIER
+  ENTREPRENEUR
+  CREATEUR
+  ENTREPRISE
+  MARQUE
+  INSTITUTION
+  PARTENAIRE
+}
+
+enum ClientStatus {
+  PROSPECT
+  EN_DISCUSSION
+  ACTIF
+  FIDELE
+  INACTIF
+}
+
+model Client {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  name      String
+  company   String?
+  phone     String?
+  whatsapp  String?
+  email     String?
+  address   String?
+  budget    String?
+  notes     String?
+
+  type      ClientType   @default(ENTREPRISE)
+  status    ClientStatus @default(PROSPECT)
+
+  projects  Project[]
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  message   String
+  type      String   @default("INFO")
+  read      Boolean  @default(false)
+  link      String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

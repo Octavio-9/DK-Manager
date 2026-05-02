@@ -1,0 +1,33 @@
+{
+  "name": "dk-production-manager",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "npm run dev --prefix server",
+    "dev:full": "concurrently -n web,api -c magenta,cyan \"npm run dev\" \"npm run dev:server\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@react-oauth/google": "^0.13.5",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.378.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.23.1",
+    "tailwind-merge": "^2.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "postcss": "^8.5.6",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^3.4.17",
+    "vite": "^5.2.0"
+  }
+}

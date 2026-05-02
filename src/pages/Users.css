@@ -1,0 +1,461 @@
+/* ──────────────────────────────────────────
+   Users Page
+────────────────────────────────────────── */
+
+.users-page {
+    min-height: 100%;
+}
+
+/* Stats grid */
+.users-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+}
+
+/* Role legend */
+.roles-legend-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.role-legend-item {
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    border: 1px solid;
+    background-color: var(--bg-card);
+}
+
+.role-legend-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.role-legend-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Filters */
+.search-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.users-search {
+    padding-left: 2rem;
+    width: 240px;
+}
+
+.filter-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-chip {
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.18s;
+}
+
+.filter-chip:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.filter-chip.active {
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+    background-color: rgba(157, 59, 241, 0.12);
+}
+
+/* Table */
+.users-table-wrapper {
+    overflow: hidden;
+    padding: 0;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.users-table thead tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.users-table th {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+}
+
+.users-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background-color 0.15s;
+}
+
+.users-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.users-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.025);
+}
+
+.users-table td {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: #121016;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.user-email {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Role badge */
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+
+/* Status badge */
+.status-dot-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.status-dot-badge.active {
+    color: #10b981;
+}
+
+.status-dot-badge.inactive {
+    color: var(--text-muted);
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: currentColor;
+    flex-shrink: 0;
+}
+
+/* Action buttons */
+.action-btn {
+    opacity: 0;
+    transition: opacity 0.15s;
+    padding: 0.3rem 0.5rem;
+}
+
+.user-row:hover .action-btn {
+    opacity: 1;
+}
+
+.danger-btn:hover {
+    color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+.empty-row {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem !important;
+}
+
+.table-footer {
+    padding: 0.85rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ──────────────────────────────────────────
+   Modal
+────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-box {
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    width: 100%;
+    max-width: 480px;
+    animation: slideUp 0.2s ease;
+    overflow: hidden;
+}
+
+.modal-box-sm {
+    max-width: 380px;
+    padding: 2rem;
+    text-align: center;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.modal-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-form {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.form-group .input {
+    width: 100%;
+}
+
+/* Role selector in modal */
+.roles-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.role-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: left;
+}
+
+.role-option:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.role-option.selected {
+    border-width: 1.5px;
+}
+
+.role-option-icon {
+    flex-shrink: 0;
+}
+
+.role-option-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.role-option-desc {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+/* Status toggler */
+.status-toggler {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.status-toggle-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.status-toggle-btn.selected {
+    border-color: #10b981;
+    color: #10b981;
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+/* Modal actions */
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+/* Delete modal */
+.delete-modal-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(239, 68, 68, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+
+.delete-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.delete-modal-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    .users-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .roles-legend-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .users-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .users-search {
+        width: 100%;
+    }
+}
