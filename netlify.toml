@@ -4,7 +4,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://MON-BACKEND-SUR-RENDER.onrender.com/api/:splat"
+  to = "https://dk-manager-backend.onrender.com/api/:splat"
   status = 200
   force = true
 
