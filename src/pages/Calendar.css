@@ -114,3 +114,27 @@
 .hover-bg-hover:hover {
     background-color: var(--bg-hover);
 }
+
+@media (max-width: 1023px) {
+    .calendar-grid {
+        overflow-x: auto;
+    }
+    
+    .calendar-header, .calendar-body {
+        min-width: 800px;
+    }
+    
+    .calendar-cell {
+        min-height: 100px;
+    }
+
+    .event-filters {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+    }
+
+    .view-toggle {
+        display: none;
+    }
+}

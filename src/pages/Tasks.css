@@ -65,3 +65,14 @@
 .column-content::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+@media (max-width: 1023px) {
+    .kanban-board {
+        padding-bottom: 1rem;
+    }
+    
+    .kanban-column {
+        min-width: 280px;
+        max-width: 280px;
+    }
+}
