@@ -117,4 +117,47 @@ body {
   .content-area {
     @apply flex-1 overflow-y-auto bg-bg-dark p-8;
   }
+
+  /* Responsive Layout */
+  .mobile-overlay {
+    @apply fixed inset-0 z-40 bg-black/50 lg:hidden;
+  }
+
+  .mobile-menu-btn {
+    @apply flex h-10 w-10 items-center justify-center rounded-lg bg-panel text-white transition hover:bg-hover lg:hidden;
+  }
+
+  .mobile-close {
+    @apply absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-secondary hover:bg-hover hover:text-white lg:hidden;
+  }
+
+  .topbar-left {
+    @apply flex items-center gap-4;
+  }
+
+  @media (max-width: 1023px) {
+    .sidebar {
+      @apply fixed inset-y-0 left-0 z-50 -translate-x-full transition-transform duration-300;
+    }
+
+    .sidebar.open {
+      @apply translate-x-0;
+    }
+
+    .main-wrapper {
+      @apply ml-0;
+    }
+
+    .topbar {
+      @apply px-4;
+    }
+
+    .content-area {
+      @apply p-4;
+    }
+
+    .search-container {
+      @apply hidden sm:flex;
+    }
+  }
 }

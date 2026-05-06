@@ -153,3 +153,44 @@
 .italic {
     font-style: italic;
 }
+
+/* Responsive Adjustments */
+@media (max-width: 1023px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .projects-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .tabs-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0.5rem;
+  }
+
+  .metrics-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Hide non-essential columns on small screens */
+  .projects-table-full th:nth-child(2),
+  .projects-table-full td:nth-child(2),
+  .projects-table-full th:nth-child(4),
+  .projects-table-full td:nth-child(4),
+  .projects-table-full th:nth-child(5),
+  .projects-table-full td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics-row {
+    grid-template-columns: 1fr;
+  }
+}

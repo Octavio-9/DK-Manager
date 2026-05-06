@@ -9,11 +9,12 @@ import {
     Users,
     UserCog,
     Settings,
-    Building2
+    Building2,
+    X
 } from 'lucide-react';
 import './Sidebar.css';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
     const { canAccess } = useAuth();
 
     // Define the full list of potential nav items mapped to their route IDs
@@ -31,7 +32,7 @@ export default function Sidebar() {
     const navItems = allNavItems.filter(item => canAccess(item.id));
 
     return (
-        <aside className="sidebar">
+        <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header">
                 <div className="logo-container">
                     <div className="logo-icon">🎬</div>
@@ -40,6 +41,9 @@ export default function Sidebar() {
                         <p className="logo-subtitle">Production Manager</p>
                     </div>
                 </div>
+                <button className="mobile-close" onClick={onClose}>
+                    <X size={20} />
+                </button>
             </div>
 
             <nav className="sidebar-nav">
@@ -48,6 +52,9 @@ export default function Sidebar() {
                         key={item.path}
                         to={item.path}
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                            if (window.innerWidth < 1024) onClose();
+                        }}
                     >
                         <item.icon size={20} />
                         <span>{item.label}</span>
@@ -56,7 +63,13 @@ export default function Sidebar() {
             </nav>
 
             <div className="sidebar-footer">
-                <NavLink to="/settings" className="nav-item">
+                <NavLink 
+                    to="/settings" 
+                    className="nav-item"
+                    onClick={() => {
+                        if (window.innerWidth < 1024) onClose();
+                    }}
+                >
                     <Settings size={20} />
                     <span>Paramètres</span>
                 </NavLink>
@@ -64,3 +77,4 @@ export default function Sidebar() {
         </aside>
     );
 }
+

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Bell, MessageSquare, LogOut, ChevronDown, Check, Info, Users } from 'lucide-react';
+import { Search, Bell, MessageSquare, LogOut, ChevronDown, Check, Info, Users, Menu } from 'lucide-react';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import './Topbar.css';
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick }) {
     const { user, activeUsers, logout } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
     const [showNotifs, setShowNotifs] = useState(false);
@@ -73,14 +73,21 @@ export default function Topbar() {
 
     return (
         <header className="topbar">
-            <div className="search-container">
+            <div className="topbar-left">
+                <button className="mobile-menu-btn" onClick={onMenuClick}>
+                    <Menu size={24} />
+                </button>
+                <div className="search-container">
+
                 <Search className="search-icon" size={18} />
                 <input
                     type="text"
                     placeholder="Rechercher projets, tâches, ou talents..."
                     className="search-input"
                 />
+                </div>
             </div>
+
 
             <div className="topbar-actions">
                 <div className="active-users" title="Utilisateurs actifs (temps rÃ©el)">
