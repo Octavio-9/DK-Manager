@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Bell, MessageSquare, LogOut, ChevronDown, Check, Info } from 'lucide-react';
+import { Search, Bell, MessageSquare, LogOut, ChevronDown, Check, Info, Users } from 'lucide-react';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import './Topbar.css';
 
 export default function Topbar() {
-    const { user, logout } = useAuth();
+    const { user, activeUsers, logout } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
     const [showNotifs, setShowNotifs] = useState(false);
     const [notifications, setNotifications] = useState([]);
@@ -83,6 +83,11 @@ export default function Topbar() {
             </div>
 
             <div className="topbar-actions">
+                <div className="active-users" title="Utilisateurs actifs (temps rÃ©el)">
+                    <Users size={16} />
+                    <span className="active-users-count">{typeof activeUsers === 'number' ? activeUsers : '...'}</span>
+                </div>
+
                 <div className="profile-menu-container" ref={notifRef} style={{ position: 'relative' }}>
                     <button className="action-btn" onClick={() => setShowNotifs(!showNotifs)}>
                         <Bell size={20} />

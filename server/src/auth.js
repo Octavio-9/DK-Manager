@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 const TOKEN_COOKIE = "dk_token";
+const isProduction = process.env.NODE_ENV === "production";
 
 export function signAuthToken(payload) {
   const secret = process.env.JWT_SECRET;
@@ -12,13 +13,17 @@ export function setAuthCookie(res, token) {
   res.cookie(TOKEN_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: isProduction,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
 
 export function clearAuthCookie(res) {
-  res.clearCookie(TOKEN_COOKIE);
+  res.clearCookie(TOKEN_COOKIE, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProduction,
+  });
 }
 
 export function requireAuth(req, res, next) {
@@ -33,4 +38,3 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ error: "Session invalide" });
   }
 }
-

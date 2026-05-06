@@ -28,6 +28,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [booting, setBooting] = useState(true);
+    const [activeUsers, setActiveUsers] = useState(null);
 
     const api = useMemo(() => {
         async function request(path, { method = 'GET', body } = {}) {
@@ -61,6 +62,37 @@ export function AuthProvider({ children }) {
             cancelled = true;
         };
     }, [api]);
+
+    useEffect(() => {
+        if (!user) {
+            setActiveUsers(null);
+            return undefined;
+        }
+
+        let cancelled = false;
+        const es = new EventSource('/api/presence/stream', { withCredentials: true });
+
+        const onPresence = (evt) => {
+            if (cancelled) return;
+            try {
+                const data = JSON.parse(evt.data);
+                if (typeof data?.activeUsers === 'number') setActiveUsers(data.activeUsers);
+            } catch {
+                // ignore parse errors
+            }
+        };
+
+        es.addEventListener('presence', onPresence);
+        es.onerror = () => {
+            // EventSource auto-reconnects. Keep last known value.
+        };
+
+        return () => {
+            cancelled = true;
+            es.removeEventListener('presence', onPresence);
+            es.close();
+        };
+    }, [user]);
 
     const login = async (email, password) => {
         try {
@@ -106,7 +138,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, booting, login, register, logout, googleLogin, canAccess }}>
+        <AuthContext.Provider value={{ user, booting, activeUsers, login, register, logout, googleLogin, canAccess }}>
             {children}
         </AuthContext.Provider>
     );

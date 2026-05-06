@@ -9,6 +9,34 @@ import { clearAuthCookie, requireAuth, setAuthCookie, signAuthToken } from "./au
 
 const app = express();
 
+const asyncHandler = (handler) => (req, res, next) => {
+  Promise.resolve(handler(req, res, next)).catch(next);
+};
+
+const presenceState = {
+  userConnections: new Map(),
+  streams: new Set(),
+};
+
+function getActiveUsersCount() {
+  let count = 0;
+  for (const connections of presenceState.userConnections.values()) {
+    if (connections > 0) count += 1;
+  }
+  return count;
+}
+
+function broadcastPresence() {
+  const payload = JSON.stringify({ activeUsers: getActiveUsersCount(), ts: Date.now() });
+  for (const res of presenceState.streams) {
+    try {
+      res.write(`event: presence\ndata: ${payload}\n\n`);
+    } catch {
+      // Ignore broken streams; cleanup happens on close.
+    }
+  }
+}
+
 app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173",
@@ -20,7 +48,49 @@ app.use(cookieParser());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-app.post("/api/auth/signup", async (req, res) => {
+app.get("/api/presence/active", requireAuth, (req, res) => {
+  return res.json({ activeUsers: getActiveUsersCount() });
+});
+
+app.get("/api/presence/stream", requireAuth, (req, res) => {
+  // Server-Sent Events stream. A connected browser tab counts as "active".
+  res.status(200);
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  presenceState.streams.add(res);
+  const userId = req.auth.sub;
+  presenceState.userConnections.set(userId, (presenceState.userConnections.get(userId) ?? 0) + 1);
+
+  res.write(
+    `event: presence\ndata: ${JSON.stringify({ activeUsers: getActiveUsersCount(), ts: Date.now() })}\n\n`
+  );
+  broadcastPresence();
+
+  const keepAlive = setInterval(() => {
+    try {
+      // Comment line keeps proxies from timing out idle connections.
+      res.write(":keepalive\n\n");
+    } catch {
+      // noop
+    }
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    presenceState.streams.delete(res);
+
+    const next = (presenceState.userConnections.get(userId) ?? 1) - 1;
+    if (next <= 0) presenceState.userConnections.delete(userId);
+    else presenceState.userConnections.set(userId, next);
+
+    broadcastPresence();
+  });
+});
+
+app.post("/api/auth/signup", asyncHandler(async (req, res) => {
   const { name, email, password, role } = req.body ?? {};
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "Champs manquants" });
@@ -42,9 +112,9 @@ app.post("/api/auth/signup", async (req, res) => {
   const token = signAuthToken({ sub: user.id, role: user.role });
   setAuthCookie(res, token);
   return res.json({ user });
-});
+}));
 
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", asyncHandler(async (req, res) => {
   const { email, password } = req.body ?? {};
   if (!email || !password) return res.status(400).json({ error: "Champs manquants" });
 
@@ -61,7 +131,7 @@ app.post("/api/auth/login", async (req, res) => {
   return res.json({
     user: { id: user.id, name: user.name, email: user.email, role: user.role, avatarBg: user.avatarBg },
   });
-});
+}));
 
 app.post("/api/auth/logout", async (req, res) => {
   clearAuthCookie(res);
@@ -70,7 +140,7 @@ app.post("/api/auth/logout", async (req, res) => {
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID");
 
-app.post("/api/auth/google", async (req, res) => {
+app.post("/api/auth/google", asyncHandler(async (req, res) => {
   const { credential } = req.body ?? {};
   if (!credential) return res.status(400).json({ error: "Jeton manquant" });
 
@@ -105,7 +175,7 @@ app.post("/api/auth/google", async (req, res) => {
   } catch (err) {
     return res.status(401).json({ error: "Authentification Google échouée" });
   }
-});
+}));
 
 app.get("/api/auth/me", requireAuth, async (req, res) => {
   const id = req.auth.sub;
@@ -626,9 +696,21 @@ app.put("/api/notifications/read-all", requireAuth, async (req, res) => {
   }
 });
 
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+
+  // eslint-disable-next-line no-console
+  console.error(err);
+
+  if (err?.message === "JWT_SECRET manquant") {
+    return res.status(500).json({ error: "Configuration serveur incomplete: JWT_SECRET manquant." });
+  }
+
+  return res.status(500).json({ error: "Erreur serveur" });
+});
+
 const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`API prête sur http://localhost:${port}`);
 });
-

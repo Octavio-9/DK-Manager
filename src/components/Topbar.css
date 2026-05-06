@@ -39,6 +39,27 @@
     gap: 1.5rem;
 }
 
+.active-users {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    user-select: none;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.active-users-count {
+    color: white;
+    font-weight: 600;
+    min-width: 18px;
+    text-align: right;
+}
+
 .action-btn {
     background: transparent;
     border: none;
