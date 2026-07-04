@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg-dark:        #0f0e13;
+  --bg-panel:       #1a1825;
+  --bg-card:        #1f1d2b;
+  --bg-hover:       #2a2838;
+  --text-primary:   #f0eef8;
+  --text-secondary: #b8b4c8;
+  --text-muted:     #6e6a75;
+  --accent-purple:  #9d3bf1;
+  --accent-cyan:    #22d3ee;
+  --c-border:       #2e2b3d;
+  --c-success:      #10b981;
+  --c-warning:      #f59e0b;
+  --c-danger:       #ef4444;
+}
+
+@theme inline {
+  --color-bg-dark: var(--bg-dark);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-card: var(--bg-card);
+  --color-bg-hover: var(--bg-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-c-border: var(--c-border);
+  --color-c-success: var(--c-success);
+  --color-c-warning: var(--c-warning);
+  --color-c-danger: var(--c-danger);
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-hover);
+}
+
+input, textarea, select, button {
+  font-family: inherit;
+}
+
+/* Animated gradient orbs for auth pages */
+@keyframes float-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.auth-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.45;
+  animation: float-orb 18s ease-in-out infinite;
+}
