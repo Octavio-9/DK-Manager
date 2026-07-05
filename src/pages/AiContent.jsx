@@ -12,12 +12,18 @@ import {
   Heading,
   Film,
   Mic,
-  ArrowRight,
-  HelpCircle,
+  KeyRound,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { cardClass, inputClass, labelClass, btnPrimary, btnSecondary } from '../lib/ui'
 import Modal from '../components/ui/Modal'
+import {
+  hasKey,
+  generateIdeas,
+  generateTitles,
+  generateScript,
+  generatePodcast,
+} from '../lib/gemini'
 
 /* ── Fetch Client & Project lists ───────────────────────────────── */
 async function fetchClients() {
@@ -32,122 +38,6 @@ async function fetchProjects() {
   return data || []
 }
 
-/* ── Mock AI Engine ────────────────────────────────────────────── */
-function runMockAi(tab, params, clientName, projectName) {
-  const subject = params.subject?.trim() || 'votre thématique'
-  const tone = params.tone || 'Dynamique'
-  const style = params.style || 'Intriguant'
-  const platform = params.platform || 'Instagram'
-  const hookType = params.hookType || 'Provocateur'
-  const duration = params.duration || '30s'
-
-  if (tab === 'ideas') {
-    return [
-      {
-        title: `Le secret caché sur ${subject}`,
-        hook: `👉 "Pourquoi tout ce qu'on vous a dit sur ${subject} est faux..."`,
-        caption: `Vous pensiez tout savoir sur ${subject} ? Détrompez-vous. La plupart des gens font cette erreur critique : [insérer l'erreur]. Voici comment faire autrement...\n\nQu'en pensez-vous ? Laissez un commentaire ! 👇`,
-        visual: `Plan serré avec éclairage contrasté. Zoom rapide sur le visage lors de la révélation. Texte en gras jaune à l'écran.`,
-        platform,
-      },
-      {
-        title: `3 outils indispensables pour ${subject}`,
-        hook: `👉 "Arrêtez de perdre du temps ! Voici 3 outils secrets pour ${subject}..."`,
-        caption: `Si vous voulez exceller en ${subject}, vous devez automatiser ou simplifier vos process. Voici mes 3 outils favoris :\n1. [Outil 1]\n2. [Outil 2]\n3. [Outil 3]\nEnregistrez ce post pour plus tard ! 💾`,
-        visual: `Enregistrement d'écran fluide montrant une démonstration rapide. Transitions dynamiques et effets sonores 'woosh'.`,
-        platform,
-      },
-      {
-        title: `Ma routine quotidienne pour dominer ${subject}`,
-        hook: `👉 "Voici exactement comment je gère ${subject} en seulement 1h par jour..."`,
-        caption: `Pas besoin d'y passer vos nuits. Avec la bonne méthode, 60 minutes suffisent. Ma routine étape par étape :\n- Étape 1 : Planification (15 min)\n- Étape 2 : Création (30 min)\n- Étape 3 : Analyse (15 min)\nPartagez ce post à un ami qui en a besoin ! ✈️`,
-        visual: `Montage rapide de type 'Day in the Life'. B-roll esthétique d'un bureau avec une tasse de café, alterné avec des visuels de statistiques en croissance.`,
-        platform,
-      },
-      {
-        title: `L'évolution inattendue de ${subject} en 2026`,
-        hook: `👉 "Le monde change et ${subject} ne sera plus jamais le même..."`,
-        caption: `Le saviez-vous ? Les dernières tendances montrent une mutation majeure dans le domaine de ${subject}. Ceux qui ne s'adaptent pas maintenant seront laissés de côté. Voici ce que vous devez changer dès aujourd'hui : [Tendance 1, Tendance 2].`,
-        visual: `Présentateur debout devant un écran vert ou fond de studio sombre avec néons. Graphiques animés apparaissant à côté.`,
-        platform,
-      },
-      {
-        title: `Guide étape par étape pour débutants sur ${subject}`,
-        hook: `👉 "Tu veux commencer ${subject} mais tu ne sais pas par où débuter ? Regarde ça."`,
-        caption: `C'est plus simple que vous ne le pensez. Ne vous laissez pas intimider. Suivez simplement ces étapes :\n1️⃣ Définir vos objectifs\n2️⃣ Choisir les bons outils\n3️⃣ Pratiquer régulièrement\n\nBesoin d'aide ? Envoyez-moi un message privé ! 📩`,
-        visual: `Plan moyen chaleureux et accueillant. Le présentateur sourit et pointe du doigt vers les zones où le texte s'affiche en post-production.`,
-        platform,
-      },
-    ]
-  } else if (tab === 'titles') {
-    return [
-      { type: 'Clickbait / Sensationnel', text: `Pourquoi 99% des gens échouent en ${subject} (Et comment l'éviter)` },
-      { type: 'Éducatif / Valeur', text: `Le guide ultime pour maîtriser ${subject} en 5 étapes simples` },
-      { type: 'Intriguant / Mystérieux', text: `La vérité cachée derrière ${subject} que personne ne veut vous dire` },
-      { type: 'Direct / Efficace', text: `Comment j'ai doublé mes résultats en ${subject} sans forcer` },
-      { type: 'Question / Engagement', text: `Faites-vous cette erreur classique avec ${subject} ?` },
-      { type: 'Controversé / Provocateur', text: `Arrêtez de faire du ${subject} comme tout le monde (C'est inutile)` },
-      { type: 'Storytelling', text: `Comment un simple conseil sur ${subject} a changé ma carrière` },
-      { type: 'Liste / Chiffres', text: `7 astuces indispensables sur ${subject} à connaître absolument` },
-      { type: 'Urgence / FOMO', text: `Faites ceci avant qu'il ne soit trop tard pour ${subject}` },
-      { type: 'Inspirant / Rêve', text: `Ce que maîtriser ${subject} peut vous apporter dans la vraie vie` },
-    ]
-  } else if (tab === 'script') {
-    return {
-      title: `Script court : ${subject}`,
-      duration,
-      hookType,
-      sections: [
-        {
-          time: '0:00 - 0:03',
-          label: 'L\'Accroche (Hook)',
-          visual: 'Plan serré face caméra, expression surprise ou dubitative. Transition rapide.',
-          audio: `"${hookType === 'Provocateur' ? `Arrêtez tout ! Si vous vous intéressez à ${subject}, vous devez absolument entendre ça.` : `Voici la méthode exacte que j'utilise pour gérer ${subject} au quotidien.`}"`,
-          overlay: '⚠️ ATTENTION / REVELATION ⚠️',
-        },
-        {
-          time: '0:03 - 0:15',
-          label: 'Le Problème & La Solution',
-          visual: 'Coupe sur un B-roll montrant une personne en train de travailler ou de réfléchir de manière intense.',
-          audio: `"Le plus gros problème avec ${subject}, c'est qu'on se complique trop la vie. Mais en réalité, il suffit d'appliquer cette astuce simple..."`,
-          overlay: 'Le problème ❌ / La solution ✅',
-        },
-        {
-          time: '0:15 - 0:25',
-          label: 'La Démonstration / Explication',
-          visual: 'Gros plan sur un outil, un geste concret, ou un schéma animé simple à l\'écran.',
-          audio: `"Regardez bien : vous prenez cette méthode, vous l'ajustez ainsi, et vos résultats décollent instantanément. C'est mathématique."`,
-          overlay: '1️⃣ Action | 2️⃣ Résultat',
-        },
-        {
-          time: '0:25 - 0:30',
-          label: 'L\'Appel à l\'Action (CTA)',
-          visual: 'Retour face caméra, pointant du doigt vers le bas ou souriant avec un geste d\'invitation.',
-          audio: `"Abonne-toi pour ne rien rater des prochaines astuces sur ${subject} et dis-moi en commentaire ce que tu en penses !"`,
-          overlay: '👉 ABONNE-TOI !',
-        },
-      ],
-    }
-  } else {
-    // Podcast
-    return {
-      summary: `Dans cet épisode passionnant${projectName ? ` pour ${projectName}` : ''}, nous explorons en profondeur la thématique de ${subject}. Nous analysons les défis courants rencontrés par les professionnels et partageons des stratégies pratiques pour optimiser vos performances et surmonter les obstacles.`,
-      suggestedTitles: [
-        `🎙️ Décrypter ${subject} : Guide pratique et conseils d'experts`,
-        `🎙️ Le futur de ${subject} : Ce qui vous attend réellement`,
-        `🎙️ Secrets de tournage et coulisses : Tout sur ${subject}`,
-      ],
-      chapters: [
-        { time: '00:00', title: 'Introduction et présentation du sujet' },
-        { time: '05:30', title: 'Les fausses croyances les plus répandues' },
-        { time: '14:20', title: 'Étude de cas concrète et retours d\'expérience' },
-        { time: '23:45', title: 'Plan d\'action étape par étape à appliquer dès maintenant' },
-        { time: '32:10', title: 'Conclusion, questions de l\'audience et mot de la fin' },
-      ],
-      socialPost: `🎙️ NOUVEL ÉPISODE DE PODCAST ! 🎙️\n\nAujourd'hui, on parle de ${subject} ! Une conversation sans filtre où l'on décortique les meilleures astuces du moment.\n\nAu programme :\n👉 Comment surmonter les blocages\n👉 Les outils indispensables à utiliser\n👉 Notre plan d'action clé en main\n\nDisponible dès maintenant sur toutes les plateformes de streaming ! Lien dans la bio. 🎧\n\n#podcast #creations #digital #podcasting #business`,
-    }
-  }
-}
 
 export default function AiContent() {
   const [activeTab, setActiveTab] = useState('ideas') // 'ideas' | 'titles' | 'script' | 'podcast'
@@ -186,27 +76,40 @@ export default function AiContent() {
   const selectedClient = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId])
   const selectedProject = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId])
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!subject.trim()) {
       toast.error('Veuillez saisir un sujet ou une thématique.')
+      return
+    }
+    if (!hasKey()) {
+      toast.error('Clé API Gemini manquante — configurez VITE_GEMINI_API_KEY.')
       return
     }
 
     setGenerating(true)
     setResults(null)
 
-    // Simulate AI generation delay
-    setTimeout(() => {
-      const generated = runMockAi(
-        activeTab,
-        { subject, tone, style, platform, hookType, duration },
-        selectedClient?.name || selectedClient?.company_name,
-        selectedProject?.name
-      )
+    try {
+      const clientName = selectedClient?.name || selectedClient?.company_name
+      let generated
+
+      if (activeTab === 'ideas') {
+        generated = await generateIdeas({ subject, platform, tone, clientName })
+      } else if (activeTab === 'titles') {
+        generated = await generateTitles({ subject, style })
+      } else if (activeTab === 'script') {
+        generated = await generateScript({ subject, hookType, duration, platform })
+      } else {
+        generated = await generatePodcast({ subject })
+      }
+
       setResults(generated)
+      toast.success('Contenu généré par Gemini IA !')
+    } catch (err) {
+      toast.error(`Erreur IA : ${err.message}`)
+    } finally {
       setGenerating(false)
-      toast.success('Suggestions IA générées !')
-    }, 1200)
+    }
   }
 
   const handleCopy = (text, id) => {
@@ -261,6 +164,22 @@ export default function AiContent() {
           Générez des idées, écrivez des scripts de Shorts ou créez des titres percutants en quelques secondes.
         </p>
       </div>
+
+      {/* API key missing banner */}
+      {!hasKey() && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-300">
+          <KeyRound size={16} className="mt-0.5 shrink-0 text-amber-400" />
+          <div className="space-y-1">
+            <p className="font-semibold text-amber-200">Clé API Gemini non configurée</p>
+            <p>
+              Obtenez une clé gratuite sur{' '}
+              <span className="font-mono text-amber-100">aistudio.google.com</span> puis ajoutez{' '}
+              <span className="font-mono bg-amber-900/40 px-1 rounded">VITE_GEMINI_API_KEY=votre_clé</span>{' '}
+              dans votre fichier <span className="font-mono">.env</span> (et dans les variables d'environnement Netlify).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs Nav */}
       <div className="flex flex-wrap border-b border-c-border">
