@@ -69,8 +69,10 @@ async function fetchChatHistory() {
   return data || []
 }
 
-async function saveChatMessage({ userId, tab, role, content }) {
-  const { error } = await supabase.from('ChatMessage').insert({ userId, tab, role, content })
+async function saveChatMessage({ id, userId, tab, role, content }) {
+  // On insère avec l'id généré côté client pour qu'il corresponde au message
+  // optimiste (évite les doublons lors du rechargement de l'historique).
+  const { error } = await supabase.from('ChatMessage').insert({ id, userId, tab, role, content })
   if (error) throw error
 }
 
@@ -259,13 +261,14 @@ export default function AiContent() {
       return
     }
 
-    const userMsg = { id: `local-${Date.now()}`, tab: activeTab, role: 'user', content: text }
+    const userMsgId = crypto.randomUUID()
+    const userMsg = { id: userMsgId, tab: activeTab, role: 'user', content: text }
     setLocalMessages((prev) => [...prev, userMsg])
     setChatInput('')
     setTyping(true)
 
-    // Save user message to DB
-    saveMsg.mutate({ userId: user.id, tab: activeTab, role: 'user', content: text })
+    // Save user message to DB (même id que l'affichage optimiste)
+    saveMsg.mutate({ id: userMsgId, userId: user.id, tab: activeTab, role: 'user', content: text })
 
     // Build history for API (DB + optimistic, text only)
     const history = [
@@ -275,9 +278,10 @@ export default function AiContent() {
 
     try {
       const reply = await chat({ messages: history, systemPrompt: buildSystemPrompt() })
-      const assistantMsg = { id: `local-${Date.now() + 1}`, tab: activeTab, role: 'assistant', content: reply }
+      const assistantMsgId = crypto.randomUUID()
+      const assistantMsg = { id: assistantMsgId, tab: activeTab, role: 'assistant', content: reply }
       setLocalMessages((prev) => [...prev, assistantMsg])
-      saveMsg.mutate({ userId: user.id, tab: activeTab, role: 'assistant', content: reply })
+      saveMsg.mutate({ id: assistantMsgId, userId: user.id, tab: activeTab, role: 'assistant', content: reply })
     } catch (err) {
       toast.error(`Erreur IA : ${err.message}`)
     } finally {
