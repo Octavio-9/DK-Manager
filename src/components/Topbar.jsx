@@ -13,6 +13,7 @@ const PAGE_TITLES = {
   '/finance': 'Finance',
   '/calendar': 'Calendrier',
   '/tasks': 'Tâches',
+  '/invoices': 'Facturation',
   '/team': 'Équipe',
   '/users': 'Utilisateurs',
   '/settings': 'Paramètres',

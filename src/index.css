@@ -69,6 +69,24 @@ input, textarea, select, button {
   font-family: inherit;
 }
 
+/* Champs de date : rendre le sélecteur (icône calendrier) visible sur le thème sombre */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"] {
+  color-scheme: dark;
+}
+
+/* Icône du sélecteur de date : claire (via color-scheme), cliquable et bien visible */
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.9;
+}
+::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 /* Animated gradient orbs for auth pages */
 @keyframes float-orb {
   0%, 100% { transform: translate(0, 0) scale(1); }

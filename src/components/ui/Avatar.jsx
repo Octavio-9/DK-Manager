@@ -1,6 +1,7 @@
 import { getInitials } from '../../lib/format'
 
 const SIZES = {
+  xs: 'w-5 h-5 text-[9px]',
   sm: 'w-7 h-7 text-xs',
   md: 'w-9 h-9 text-sm',
   lg: 'w-14 h-14 text-lg',

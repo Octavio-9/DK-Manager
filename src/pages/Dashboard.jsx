@@ -22,6 +22,7 @@ import {
 } from '../lib/constants'
 import Badge from '../components/ui/Badge'
 import StatCard from '../components/ui/StatCard'
+import ObjectivesWidget from '../components/ObjectivesWidget'
 
 async function fetchDashboardData() {
   const [projectsRes, clientsRes, tasksRes, eventsRes] = await Promise.all([
@@ -135,6 +136,8 @@ export default function Dashboard() {
         <StatCard icon={Building2} label="Clients actifs" value={activeClients} color="#10b981" />
         <StatCard icon={Wallet} label="Total encaissé" value={formatCurrency(totalCollected)} color="#f59e0b" />
       </div>
+
+      <ObjectivesWidget />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-xl border border-c-border bg-bg-card p-4 sm:p-6 lg:col-span-2">

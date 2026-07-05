@@ -10,6 +10,7 @@ import {
   Plus, Trash2, BarChart3, List, ListChecks,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 import { formatCurrency, isOverdue } from '../lib/format'
 import {
   TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_COLORS, TRANSACTION_TYPE_OPTIONS,
@@ -99,6 +100,7 @@ const ChartTooltip = ({ active, payload, label }) => {
 
 export default function Finance() {
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [activeTab, setActiveTab] = useState('overview')
   const [txModalOpen, setTxModalOpen] = useState(false)
   const [editingTx, setEditingTx] = useState(null)
@@ -425,7 +427,7 @@ export default function Finance() {
           id="tx-form"
           onSubmit={(e) => {
             e.preventDefault()
-            if (!txForm.amount || isNaN(Number(txForm.amount))) { toast.error('Montant invalide'); return }
+            if (!txForm.amount || isNaN(Number(txForm.amount))) { showAlert('Montant invalide'); return }
             saveTxMutation.mutate({
               type: txForm.type,
               amount: Number(txForm.amount),
@@ -446,8 +448,8 @@ export default function Finance() {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Montant (€) *</label>
-              <input type="number" min="0" step="0.01" required value={txForm.amount} onChange={(e) => setTxForm(f => ({ ...f, amount: e.target.value }))} className={inputClass} />
+              <label className={labelClass}>Montant (GNF) *</label>
+              <input type="number" min="0" step="1" required value={txForm.amount} onChange={(e) => setTxForm(f => ({ ...f, amount: e.target.value }))} className={inputClass} />
             </div>
             <div>
               <label className={labelClass}>Date</label>

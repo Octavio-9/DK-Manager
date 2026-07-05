@@ -7,6 +7,7 @@ import {
   Calendar, CheckCircle2, Clock, AlertCircle,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 import { formatDate, formatCurrency } from '../lib/format'
 import {
   PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, PROJECT_STATUS_OPTIONS,
@@ -91,6 +92,7 @@ export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [activeTab, setActiveTab] = useState('info')
   const [taskOpen, setTaskOpen] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
@@ -408,7 +410,7 @@ export default function ProjectDetail() {
       >
         <form id="task-form-detail" onSubmit={(e) => {
           e.preventDefault()
-          if (!taskForm.title.trim()) { toast.error('Le titre est requis'); return }
+          if (!taskForm.title.trim()) { showAlert('Le titre est requis'); return }
           saveTaskMutation.mutate({
             title: taskForm.title.trim(),
             description: taskForm.description || null,
@@ -458,7 +460,7 @@ export default function ProjectDetail() {
       >
         <form id="prod-form" onSubmit={(e) => {
           e.preventDefault()
-          if (!prodForm.title.trim()) { toast.error('Le titre est requis'); return }
+          if (!prodForm.title.trim()) { showAlert('Le titre est requis'); return }
           saveProdMutation.mutate({
             title: prodForm.title.trim(),
             type: prodForm.type,

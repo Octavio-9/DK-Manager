@@ -5,6 +5,7 @@ import {
   Plus, Trash2, Film, Search, Upload, Link2, CheckCircle2, XCircle, Clock, Copy,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 import { formatDate } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
@@ -122,6 +123,7 @@ function ProductionCard({ prod, onEdit, onCopyValidationLink }) {
 
 export default function Productions() {
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -347,7 +349,7 @@ export default function Productions() {
           id="prod-global-form"
           onSubmit={(e) => {
             e.preventDefault()
-            if (!form.title.trim()) { toast.error('Le titre est requis'); return }
+            if (!form.title.trim()) { showAlert('Le titre est requis'); return }
             const payload = {
               title: form.title.trim(),
               type: form.type,

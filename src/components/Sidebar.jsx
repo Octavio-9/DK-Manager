@@ -34,7 +34,7 @@ const NAV_ITEMS = [
   { key: 'ai',         path: '/ai',         label: 'Assistant IA',    icon: Sparkles },
   { key: 'team',       path: '/team',       label: 'Équipe',          icon: Users },
   { key: 'finance',    path: '/finance',    label: 'Finance',         icon: Wallet },
-  { key: 'invoices',   path: '/invoices',   label: 'Factures',        icon: FileText },
+  { key: 'invoices',   path: '/invoices',   label: 'Facturation',     icon: FileText },
   { key: 'documents',  path: '/documents',  label: 'Documents',       icon: FolderOpen },
   { key: 'users',      path: '/users',      label: 'Utilisateurs',    icon: UserCog },
 ]

@@ -1,10 +1,8 @@
 export function formatCurrency(value) {
   const n = Number(value) || 0
   return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
     maximumFractionDigits: 0,
-  }).format(n)
+  }).format(n) + ' GNF'
 }
 
 export function formatDate(value) {

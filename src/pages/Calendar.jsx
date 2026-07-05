@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Clock, FolderKanban } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 import { formatDateTime } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
@@ -66,6 +67,7 @@ async function fetchProjects() {
 
 export default function CalendarPage() {
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date()
     return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -169,7 +171,7 @@ export default function CalendarPage() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.date) {
-      toast.error('Le titre et la date sont requis.')
+      showAlert('Le titre et la date sont requis.')
       return
     }
     saveMutation.mutate({

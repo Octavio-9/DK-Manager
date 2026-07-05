@@ -10,6 +10,7 @@ import {
   monthKey,
 } from '../lib/obligations'
 import { formatCurrency } from '../lib/format'
+import { useAlert } from '../context/AlertContext'
 import Badge from './ui/Badge'
 import Modal from './ui/Modal'
 import { inputClass, labelClass, btnPrimary, btnSecondary } from '../lib/ui'
@@ -19,6 +20,7 @@ const EMPTY_TEMPLATE = { name: '', defaultAmount: '', categoryId: '' }
 
 export default function ObligationsTab({ categories }) {
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [monthDate, setMonthDate] = useState(() => {
     const d = new Date()
     return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -216,15 +218,15 @@ export default function ObligationsTab({ categories }) {
           id="pay-form"
           onSubmit={(e) => {
             e.preventDefault()
-            if (!payForm.amount || isNaN(Number(payForm.amount))) { toast.error('Montant invalide'); return }
+            if (!payForm.amount || isNaN(Number(payForm.amount))) { showAlert('Montant invalide'); return }
             payMutation.mutate({ entry: payingEntry, amount: Number(payForm.amount), paidDate: payForm.paidDate })
           }}
           className="space-y-4"
         >
           <p className="text-sm text-text-secondary">{payingEntry?.name}</p>
           <div>
-            <label className={labelClass}>Montant (€) *</label>
-            <input type="number" min="0" step="0.01" required value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} className={inputClass} />
+            <label className={labelClass}>Montant (GNF) *</label>
+            <input type="number" min="0" step="1" required value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Date de paiement</label>
@@ -287,8 +289,8 @@ export default function ObligationsTab({ categories }) {
           id="template-form"
           onSubmit={(e) => {
             e.preventDefault()
-            if (!templateForm.name.trim()) { toast.error('Nom requis'); return }
-            if (!templateForm.defaultAmount || isNaN(Number(templateForm.defaultAmount))) { toast.error('Montant invalide'); return }
+            if (!templateForm.name.trim()) { showAlert('Nom requis'); return }
+            if (!templateForm.defaultAmount || isNaN(Number(templateForm.defaultAmount))) { showAlert('Montant invalide'); return }
             saveTemplateMutation.mutate({
               name: templateForm.name.trim(),
               defaultAmount: Number(templateForm.defaultAmount),
@@ -302,8 +304,8 @@ export default function ObligationsTab({ categories }) {
             <input value={templateForm.name} onChange={(e) => setTemplateForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Montant par défaut (€) *</label>
-            <input type="number" min="0" step="0.01" value={templateForm.defaultAmount} onChange={(e) => setTemplateForm((f) => ({ ...f, defaultAmount: e.target.value }))} className={inputClass} />
+            <label className={labelClass}>Montant par défaut (GNF) *</label>
+            <input type="number" min="0" step="1" value={templateForm.defaultAmount} onChange={(e) => setTemplateForm((f) => ({ ...f, defaultAmount: e.target.value }))} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Catégorie</label>

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useAlert } from '../context/AlertContext'
 import { formatDate } from '../lib/format'
 import { ROLE_LABELS, ROLE_COLORS } from '../lib/constants'
 import Avatar from '../components/ui/Avatar'
@@ -36,6 +37,7 @@ async function fetchRoles() {
 export default function Users() {
   const queryClient = useQueryClient()
   const { user: currentUser } = useAuth()
+  const { showAlert } = useAlert()
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
 
@@ -106,15 +108,15 @@ export default function Users() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name.trim() || !form.email.trim() || !form.password) {
-      toast.error('Tous les champs sont requis.')
+      showAlert('Tous les champs sont requis.')
       return
     }
     if (form.password.length < 6) {
-      toast.error('Le mot de passe doit contenir au moins 6 caractères.')
+      showAlert('Le mot de passe doit contenir au moins 6 caractères.')
       return
     }
     if (!form.roleId) {
-      toast.error('Veuillez sélectionner un rôle.')
+      showAlert('Veuillez sélectionner un rôle.')
       return
     }
     createMutation.mutate({

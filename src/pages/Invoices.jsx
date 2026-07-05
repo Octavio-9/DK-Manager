@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { formatDate, formatCurrency } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
+import InvoicePreview from '../components/InvoicePreview'
 import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../lib/ui'
 import { downloadInvoicePDF } from '../lib/invoicePdf'
 
@@ -20,10 +21,17 @@ const INVOICE_STATUS = {
 
 const STATUS_OPTIONS = Object.keys(INVOICE_STATUS)
 
+const DOC_TYPE = {
+  FACTURE: { label: 'Facture', color: '#9d3bf1' },
+  RECU:    { label: 'Reçu',    color: '#10b981' },
+}
+
 const EMPTY_FORM = {
-  clientId: '',
+  documentType: 'FACTURE',
+  clientName: '',
   dueDate: '',
   status: 'PENDING',
+  sourceInvoiceId: null,
   items: [{ description: '', quantity: 1, price: '', paid: 0 }],
 }
 
@@ -44,22 +52,25 @@ async function fetchClients() {
   return data || []
 }
 
-/* ── Invoice number generator ─────────────────────────────────── */
+/* ── Document number generator (FAC- / REC-) ──────────────────── */
 
-function generateInvoiceNumber() {
+function generateDocNumber(type) {
   const now = new Date()
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const rand = String(Math.floor(Math.random() * 9000) + 1000)
-  return `DK-${y}${m}-${rand}`
+  const prefix = type === 'RECU' ? 'REC' : 'FAC'
+  return `${prefix}-${y}${m}-${rand}`
 }
 
 /* ── Row component ───────────────────────────────────────────────── */
 
-function InvoiceRow({ invoice, onEdit }) {
+function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
   const [expanded, setExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const s = INVOICE_STATUS[invoice.status] || { label: invoice.status, color: '#6e6a75' }
+  const t = DOC_TYPE[invoice.documentType] || DOC_TYPE.FACTURE
+  const canGenerateReceipt = invoice.documentType === 'FACTURE' && invoice.status === 'PAID'
 
   async function handleDownload(e) {
     e.stopPropagation()
@@ -81,12 +92,22 @@ function InvoiceRow({ invoice, onEdit }) {
             <span className="font-mono text-sm font-medium text-text-primary">{invoice.invoiceNumber}</span>
           </div>
         </td>
-        <td className="p-4 text-sm text-text-secondary">{invoice.clientRel?.name || '—'}</td>
+        <td className="p-4"><Badge color={t.color}>{t.label}</Badge></td>
+        <td className="p-4 text-sm text-text-secondary">{invoice.clientRel?.name || invoice.clientName || '—'}</td>
         <td className="p-4 text-sm font-semibold text-text-primary">{formatCurrency(invoice.total)}</td>
         <td className="p-4 text-sm text-text-secondary">{invoice.dueDate ? formatDate(invoice.dueDate) : '—'}</td>
         <td className="p-4"><Badge color={s.color}>{s.label}</Badge></td>
         <td className="p-4 text-right">
           <div className="flex items-center justify-end gap-2">
+            {canGenerateReceipt && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onGenerateReceipt(invoice) }}
+                title="Générer le reçu de paiement"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-c-success border border-c-success/40 hover:bg-c-success/10 transition-colors"
+              >
+                Générer le reçu
+              </button>
+            )}
             <button
               onClick={handleDownload}
               disabled={downloading}
@@ -106,7 +127,7 @@ function InvoiceRow({ invoice, onEdit }) {
       </tr>
       {expanded && invoice.items?.length > 0 && (
         <tr className="bg-bg-panel/50">
-          <td colSpan={6} className="px-8 py-3">
+          <td colSpan={7} className="px-8 py-3">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-text-muted uppercase">
@@ -142,9 +163,11 @@ export default function Invoices() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [typeFilter, setTypeFilter] = useState('ALL')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [clientPrompt, setClientPrompt] = useState(null)
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
@@ -156,14 +179,16 @@ export default function Invoices() {
 
   const filtered = useMemo(() => {
     return invoices.filter((inv) => {
+      if (typeFilter !== 'ALL' && (inv.documentType || 'FACTURE') !== typeFilter) return false
       if (statusFilter !== 'ALL' && inv.status !== statusFilter) return false
       if (search) {
         const q = search.toLowerCase()
-        if (!inv.invoiceNumber.toLowerCase().includes(q) && !(inv.clientRel?.name || '').toLowerCase().includes(q)) return false
+        const clientName = (inv.clientRel?.name || inv.clientName || '').toLowerCase()
+        if (!inv.invoiceNumber.toLowerCase().includes(q) && !clientName.includes(q)) return false
       }
       return true
     })
-  }, [invoices, statusFilter, search])
+  }, [invoices, typeFilter, statusFilter, search])
 
   /* Totals */
   const totalBilled   = invoices.reduce((s, i) => s + Number(i.total || 0), 0)
@@ -173,13 +198,19 @@ export default function Invoices() {
 
   /* Mutations */
   const saveMutation = useMutation({
-    mutationFn: async ({ formData, invoiceId }) => {
-      const lineTotal = formData.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0)
+    mutationFn: async ({ formData, invoiceId, clientId, clientName }) => {
+      const isReceipt = formData.documentType === 'RECU'
+      // Facture : total = montant dû ; Reçu : total = montant payé
+      const billed = formData.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0)
+      const paid   = formData.items.reduce((s, it) => s + (Number(it.paid) || 0), 0)
       const payload = {
-        clientId: formData.clientId || null,
+        documentType: formData.documentType || 'FACTURE',
+        clientId: clientId || null,
+        clientName: clientName || null,
         dueDate: formData.dueDate || null,
         status: formData.status,
-        total: lineTotal,
+        total: isReceipt ? paid : billed,
+        sourceInvoiceId: formData.sourceInvoiceId || null,
       }
 
       if (invoiceId) {
@@ -200,7 +231,7 @@ export default function Invoices() {
           if (itemErr) throw itemErr
         }
       } else {
-        const invoiceNumber = generateInvoiceNumber()
+        const invoiceNumber = generateDocNumber(payload.documentType)
         const { data: created, error } = await supabase
           .from('Invoice')
           .insert({ ...payload, invoiceNumber })
@@ -223,7 +254,8 @@ export default function Invoices() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
-      toast.success(editingInvoice ? 'Facture mise à jour' : 'Facture créée')
+      const noun = form.documentType === 'RECU' ? 'Reçu' : 'Facture'
+      toast.success(editingInvoice ? `${noun} mis à jour` : `${noun} créé`)
       closeModal()
     },
     onError: (err) => toast.error(err.message),
@@ -243,18 +275,25 @@ export default function Invoices() {
   })
 
   /* Helpers */
-  const openCreateModal = () => {
+  const openCreateModal = (documentType = 'FACTURE') => {
     setEditingInvoice(null)
-    setForm({ ...EMPTY_FORM, items: [{ description: '', quantity: 1, price: '' }] })
+    setForm({
+      ...EMPTY_FORM,
+      documentType,
+      status: documentType === 'RECU' ? 'PAID' : 'PENDING',
+      items: [{ description: '', quantity: 1, price: '', paid: 0 }],
+    })
     setModalOpen(true)
   }
 
   const openEditModal = (inv) => {
     setEditingInvoice(inv)
     setForm({
-      clientId: inv.clientId || '',
+      documentType: inv.documentType || 'FACTURE',
+      clientName: inv.clientRel?.name || inv.clientName || '',
       dueDate: inv.dueDate || '',
       status: inv.status,
+      sourceInvoiceId: inv.sourceInvoiceId || null,
       items: inv.items?.length
         ? inv.items.map(it => ({ description: it.description, quantity: it.quantity, price: it.price, paid: it.paid ?? 0 }))
         : [{ description: '', quantity: 1, price: '', paid: 0 }],
@@ -262,10 +301,74 @@ export default function Invoices() {
     setModalOpen(true)
   }
 
+  // Génère un reçu pré-rempli à partir d'une facture payée (montants réglés en totalité)
+  const generateReceipt = (facture) => {
+    setEditingInvoice(null)
+    setForm({
+      documentType: 'RECU',
+      clientName: facture.clientRel?.name || facture.clientName || '',
+      dueDate: facture.dueDate || '',
+      status: 'PAID',
+      sourceInvoiceId: facture.id,
+      items: (facture.items?.length ? facture.items : [{ description: '', quantity: 1, price: '' }]).map((it) => ({
+        description: it.description || '',
+        quantity: it.quantity || 1,
+        price: it.price || 0,
+        paid: (Number(it.price) || 0) * (Number(it.quantity) || 1),
+      })),
+    })
+    setModalOpen(true)
+    toast.success('Reçu pré-rempli — vérifiez et enregistrez.')
+  }
+
   const closeModal = () => {
     setModalOpen(false)
     setEditingInvoice(null)
     setForm(EMPTY_FORM)
+  }
+
+  /* Résolution du client : existant, nouveau (à enregistrer), ou libre */
+  const submitInvoice = (formData) => {
+    const typed = formData.clientName.trim()
+    const invoiceId = editingInvoice?.id || null
+
+    // Aucun client saisi
+    if (!typed) {
+      saveMutation.mutate({ formData, invoiceId, clientId: null, clientName: null })
+      return
+    }
+
+    // Correspond à un client déjà enregistré (insensible à la casse)
+    const match = clients.find((c) => c.name.trim().toLowerCase() === typed.toLowerCase())
+    if (match) {
+      saveMutation.mutate({ formData, invoiceId, clientId: match.id, clientName: null })
+      return
+    }
+
+    // Nouveau nom → demander s'il faut l'enregistrer dans la base
+    setClientPrompt({ formData, name: typed })
+  }
+
+  const handleClientDecision = async (persist) => {
+    const { formData, name } = clientPrompt
+    const invoiceId = editingInvoice?.id || null
+
+    if (persist) {
+      const { data, error } = await supabase
+        .from('Client')
+        .insert({ name })
+        .select('id, name')
+        .single()
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] })
+      saveMutation.mutate({ formData, invoiceId, clientId: data.id, clientName: null })
+    } else {
+      saveMutation.mutate({ formData, invoiceId, clientId: null, clientName: name })
+    }
+    setClientPrompt(null)
   }
 
   const addItem = () => setForm(f => ({ ...f, items: [...f.items, { description: '', quantity: 1, price: '', paid: 0 }] }))
@@ -276,6 +379,9 @@ export default function Invoices() {
   }))
 
   const lineTotal = form.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0)
+  const totalPaidForm = form.items.reduce((s, it) => s + (Number(it.paid) || 0), 0)
+  const isReceipt = form.documentType === 'RECU'
+  const docNoun = isReceipt ? 'reçu' : 'facture'
 
   return (
     <div className="space-y-6">
@@ -307,6 +413,11 @@ export default function Invoices() {
               className={`${inputClass} pl-9 sm:w-52`}
             />
           </div>
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={`${inputClass} sm:w-auto`}>
+            <option value="ALL">Tous les types</option>
+            <option value="FACTURE">Factures</option>
+            <option value="RECU">Reçus</option>
+          </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`${inputClass} sm:w-auto`}>
             <option value="ALL">Tous les statuts</option>
             {STATUS_OPTIONS.map((s) => (
@@ -314,9 +425,14 @@ export default function Invoices() {
             ))}
           </select>
         </div>
-        <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
-          <Plus size={16} /> Nouvelle facture
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button onClick={() => openCreateModal('FACTURE')} className={`${btnPrimary} w-full sm:w-auto`}>
+            <Plus size={16} /> Nouvelle facture
+          </button>
+          <button onClick={() => openCreateModal('RECU')} className={`${btnSecondary} w-full sm:w-auto`}>
+            <Plus size={16} /> Nouveau reçu
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -326,15 +442,16 @@ export default function Invoices() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <FileText size={40} className="text-text-muted/40" />
-            <p className="text-text-secondary">Aucune facture.</p>
-            <button onClick={openCreateModal} className={btnPrimary}><Plus size={15} /> Créer une facture</button>
+            <p className="text-text-secondary">Aucun document.</p>
+            <button onClick={() => openCreateModal('FACTURE')} className={btnPrimary}><Plus size={15} /> Créer une facture</button>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left">
+            <table className="w-full min-w-[720px] text-left">
               <thead>
                 <tr className="border-b border-c-border text-xs uppercase text-text-muted">
-                  <th className="p-4 font-medium">N° Facture</th>
+                  <th className="p-4 font-medium">N°</th>
+                  <th className="p-4 font-medium">Type</th>
                   <th className="p-4 font-medium">Client</th>
                   <th className="p-4 font-medium">Total</th>
                   <th className="p-4 font-medium">Échéance</th>
@@ -344,7 +461,7 @@ export default function Invoices() {
               </thead>
               <tbody>
                 {filtered.map((inv) => (
-                  <InvoiceRow key={inv.id} invoice={inv} onEdit={openEditModal} />
+                  <InvoiceRow key={inv.id} invoice={inv} onEdit={openEditModal} onGenerateReceipt={generateReceipt} />
                 ))}
               </tbody>
             </table>
@@ -356,8 +473,12 @@ export default function Invoices() {
       <Modal
         open={modalOpen}
         onClose={closeModal}
-        title={editingInvoice ? `Modifier — ${editingInvoice.invoiceNumber}` : 'Nouvelle facture'}
-        maxWidth="max-w-2xl"
+        title={
+          editingInvoice
+            ? `Modifier — ${editingInvoice.invoiceNumber}`
+            : isReceipt ? 'Nouveau reçu' : 'Nouvelle facture'
+        }
+        maxWidth="max-w-6xl"
         footer={
           <>
             {editingInvoice && (
@@ -389,21 +510,33 @@ export default function Invoices() {
           </>
         }
       >
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
         <form
           id="invoice-form"
           onSubmit={(e) => {
             e.preventDefault()
-            saveMutation.mutate({ formData: form, invoiceId: editingInvoice?.id || null })
+            submitInvoice(form)
           }}
           className="space-y-5"
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Client</label>
-              <select value={form.clientId} onChange={(e) => setForm(f => ({ ...f, clientId: e.target.value }))} className={inputClass}>
-                <option value="">— Aucun —</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <input
+                type="text"
+                list="client-options"
+                value={form.clientName}
+                onChange={(e) => setForm(f => ({ ...f, clientName: e.target.value }))}
+                placeholder="Sélectionner ou saisir un client…"
+                className={inputClass}
+                autoComplete="off"
+              />
+              <datalist id="client-options">
+                {clients.map((c) => <option key={c.id} value={c.name} />)}
+              </datalist>
+              <p className="mt-1 text-xs text-text-muted">
+                Choisissez un client existant ou saisissez un nouveau nom.
+              </p>
             </div>
             <div>
               <label className={labelClass}>Statut</label>
@@ -420,7 +553,7 @@ export default function Invoices() {
           {/* Items */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className={labelClass}>Lignes de facture</label>
+              <label className={labelClass}>{`Lignes ${isReceipt ? 'du reçu' : 'de la facture'}`}</label>
               <button type="button" onClick={addItem} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-accent-purple hover:bg-accent-purple/10 transition-colors">
                 <Plus size={13} /> Ajouter
               </button>
@@ -432,8 +565,8 @@ export default function Invoices() {
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-right font-medium w-16">Qté</th>
                     <th className="p-3 text-right font-medium w-24">P.U. (GNF)</th>
-                    <th className="p-3 text-right font-medium w-24">Payé (GNF)</th>
-                    <th className="p-3 text-right font-medium w-24">Reste</th>
+                    {isReceipt && <th className="p-3 text-right font-medium w-24">Payé (GNF)</th>}
+                    <th className="p-3 text-right font-medium w-24">{isReceipt ? 'Reste' : 'Total'}</th>
                     <th className="p-3 w-10" />
                   </tr>
                 </thead>
@@ -461,22 +594,24 @@ export default function Invoices() {
                       </td>
                       <td className="p-2">
                         <input
-                          type="number" min="0" step="0.01"
+                          type="number" min="0" step="1"
                           value={item.price}
                           onChange={(e) => updateItem(i, 'price', e.target.value)}
                           className={`${inputClass} py-1.5 text-right`}
                         />
                       </td>
-                      <td className="p-2">
-                        <input
-                          type="number" min="0" step="0.01"
-                          value={item.paid}
-                          onChange={(e) => updateItem(i, 'paid', e.target.value)}
-                          className={`${inputClass} py-1.5 text-right`}
-                        />
-                      </td>
+                      {isReceipt && (
+                        <td className="p-2">
+                          <input
+                            type="number" min="0" step="1"
+                            value={item.paid}
+                            onChange={(e) => updateItem(i, 'paid', e.target.value)}
+                            className={`${inputClass} py-1.5 text-right`}
+                          />
+                        </td>
+                      )}
                       <td className="p-2 text-right text-text-muted text-xs">
-                        {formatCurrency(reste)}
+                        {formatCurrency(isReceipt ? reste : lineTotal)}
                       </td>
                       <td className="p-2 text-center">
                         <button
@@ -495,25 +630,89 @@ export default function Invoices() {
               </table>
             </div>
             <div className="mt-3 flex flex-wrap justify-end gap-6 border-t border-c-border pt-3 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-text-muted">Total facturé</span>
-                <span className="font-bold text-text-primary">{formatCurrency(lineTotal)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-text-muted">Total payé</span>
-                <span className="font-bold text-c-success">
-                  {formatCurrency(form.items.reduce((s, it) => s + (Number(it.paid) || 0), 0))}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-text-muted">Reste</span>
-                <span className="font-bold text-c-danger">
-                  {formatCurrency(Math.max(0, lineTotal - form.items.reduce((s, it) => s + (Number(it.paid) || 0), 0)))}
-                </span>
-              </div>
+              {isReceipt ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-muted">Total facturé</span>
+                    <span className="font-bold text-text-primary">{formatCurrency(lineTotal)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-muted">Total payé</span>
+                    <span className="font-bold text-c-success">{formatCurrency(totalPaidForm)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-muted">Reste</span>
+                    <span className="font-bold text-c-danger">
+                      {formatCurrency(Math.max(0, lineTotal - totalPaidForm))}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-text-muted">Total à payer</span>
+                  <span className="font-bold text-text-primary">{formatCurrency(lineTotal)}</span>
+                </div>
+              )}
             </div>
           </div>
         </form>
+
+          {/* Aperçu en temps réel */}
+          <div className="xl:sticky xl:top-0 xl:self-start">
+            <p className="mb-2 text-xs font-medium text-text-muted">{`Aperçu ${isReceipt ? 'du reçu' : 'de la facture'}`}</p>
+            <InvoicePreview
+              documentType={form.documentType}
+              clientName={form.clientName}
+              items={form.items}
+              dueDate={form.dueDate}
+              invoiceNumber={editingInvoice?.invoiceNumber}
+              dateLabel={
+                editingInvoice?.createdAt
+                  ? new Date(editingInvoice.createdAt).toLocaleDateString('fr-FR')
+                  : new Date().toLocaleDateString('fr-FR')
+              }
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Popup : enregistrer le client saisi manuellement ? */}
+      <Modal
+        open={!!clientPrompt}
+        onClose={() => setClientPrompt(null)}
+        title="Nouveau client"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => handleClientDecision(false)}
+              disabled={saveMutation.isPending}
+              className={btnSecondary}
+            >
+              Non, garder sur la facture
+            </button>
+            <button
+              type="button"
+              onClick={() => handleClientDecision(true)}
+              disabled={saveMutation.isPending}
+              className={btnPrimary}
+            >
+              Oui, enregistrer
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Le client{' '}
+          <span className="font-semibold text-text-primary">« {clientPrompt?.name} »</span>{' '}
+          n&apos;existe pas encore dans la base de données. Voulez-vous l&apos;enregistrer pour le
+          réutiliser plus tard&nbsp;?
+        </p>
+        <p className="mt-2 text-xs text-text-muted">
+          Si vous choisissez « Non », le nom sera simplement conservé sur cette facture.
+        </p>
       </Modal>
     </div>
   )

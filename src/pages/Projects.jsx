@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Plus, Pencil, Trash2, Calendar, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 import { formatCurrency, formatDate } from '../lib/format'
 import {
   PROJECT_STATUS_LABELS,
@@ -50,6 +51,7 @@ async function fetchProjectTypes() {
 export default function Projects() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [clientFilter, setClientFilter] = useState('ALL')
@@ -138,7 +140,7 @@ export default function Projects() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name.trim()) {
-      toast.error('Le nom du projet est requis.')
+      showAlert('Le nom du projet est requis.')
       return
     }
     saveMutation.mutate({
@@ -348,22 +350,22 @@ export default function Projects() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Budget total (€)</label>
+              <label className={labelClass}>Budget total (GNF)</label>
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.budget}
                 onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
                 className={inputClass}
               />
             </div>
             <div>
-              <label className={labelClass}>Montant payé (€)</label>
+              <label className={labelClass}>Montant payé (GNF)</label>
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.amountPaid}
                 onChange={(e) => setForm((f) => ({ ...f, amountPaid: e.target.value }))}
                 className={inputClass}

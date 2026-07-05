@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
+import { AlertProvider } from './context/AlertContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,17 +22,19 @@ createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: '#1f1d2b',
-                color: '#f0eef8',
-                border: '1px solid #2e2b3d',
-              },
-            }}
-          />
+          <AlertProvider>
+            <App />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: '#1f1d2b',
+                  color: '#f0eef8',
+                  border: '1px solid #2e2b3d',
+                },
+              }}
+            />
+          </AlertProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Search, Mail, Phone, MapPin, FolderKanban } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 import {
   CLIENT_TYPE_LABELS,
   CLIENT_TYPE_OPTIONS,
@@ -37,6 +38,7 @@ async function fetchClients() {
 export default function Clients() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { showAlert } = useAlert()
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
@@ -123,7 +125,7 @@ export default function Clients() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name.trim()) {
-      toast.error('Le nom du client est requis.')
+      showAlert('Le nom du client est requis.')
       return
     }
     saveMutation.mutate({
