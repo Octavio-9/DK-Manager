@@ -92,6 +92,17 @@ export async function setObligationTemplateActive(id, active) {
   if (error) throw error
 }
 
+export async function deleteObligationEntry(entry) {
+  // Supprime la transaction de paiement associée si l'échéance était payée,
+  // pour ne pas laisser de dépense orpheline dans les finances.
+  if (entry.transactionId) {
+    const { error: txError } = await supabase.from('Transaction').delete().eq('id', entry.transactionId)
+    if (txError) throw txError
+  }
+  const { error } = await supabase.from('ObligationEntry').delete().eq('id', entry.id)
+  if (error) throw error
+}
+
 export async function deleteObligationTemplate(id) {
   // Retire d'abord les échéances non payées liées à ce modèle, pour qu'il
   // disparaisse aussi du mois courant. Les échéances déjà payées sont

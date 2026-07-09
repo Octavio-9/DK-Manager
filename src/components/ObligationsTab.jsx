@@ -7,7 +7,7 @@ import {
 import {
   fetchObligationTemplates, fetchObligationEntries, generateMissingEntries,
   payObligationEntry, unpayObligationEntry, saveObligationTemplate, setObligationTemplateActive,
-  deleteObligationTemplate, monthKey,
+  deleteObligationTemplate, deleteObligationEntry, monthKey,
 } from '../lib/obligations'
 import { formatCurrency } from '../lib/format'
 import { useAlert } from '../context/AlertContext'
@@ -36,6 +36,7 @@ export default function ObligationsTab({ categories }) {
   const [payModalOpen, setPayModalOpen] = useState(false)
   const [payingEntry, setPayingEntry] = useState(null)
   const [payForm, setPayForm] = useState({ amount: '', paidDate: '' })
+  const [deletingEntry, setDeletingEntry] = useState(null)
 
   const { data: templates = [] } = useQuery({
     queryKey: ['obligation-templates'],
@@ -88,6 +89,17 @@ export default function ObligationsTab({ categories }) {
       queryClient.invalidateQueries({ queryKey: ['obligation-entries', month] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       toast.success('Paiement annulé')
+    },
+    onError: (e) => toast.error(e.message),
+  })
+
+  const deleteEntryMutation = useMutation({
+    mutationFn: (entry) => deleteObligationEntry(entry),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['obligation-entries', month] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      toast.success('Ligne supprimée')
+      setDeletingEntry(null)
     },
     onError: (e) => toast.error(e.message),
   })
@@ -207,9 +219,19 @@ export default function ObligationsTab({ categories }) {
                   {entry.categoryRel && <Badge color={entry.categoryRel.color || '#6e6a75'}>{entry.categoryRel.name}</Badge>}
                 </div>
               </div>
-              <p className={`font-semibold shrink-0 ${entry.done ? 'text-c-success' : 'text-text-secondary'}`}>
-                {formatCurrency(entry.amount)}
-              </p>
+              <div className="flex items-center gap-2 shrink-0">
+                <p className={`font-semibold ${entry.done ? 'text-c-success' : 'text-text-secondary'}`}>
+                  {formatCurrency(entry.amount)}
+                </p>
+                <button
+                  onClick={() => setDeletingEntry(entry)}
+                  className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-c-danger"
+                  aria-label="Supprimer cette ligne"
+                  title="Supprimer cette ligne"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -361,6 +383,33 @@ export default function ObligationsTab({ categories }) {
           Voulez-vous vraiment supprimer l'obligation «&nbsp;{deletingTemplate?.name}&nbsp;» ?
           Les échéances non payées seront retirées ; les paiements déjà enregistrés
           restent dans l'historique. Cette action est irréversible.
+        </p>
+      </Modal>
+
+      <Modal
+        open={!!deletingEntry}
+        onClose={() => setDeletingEntry(null)}
+        title="Supprimer la ligne"
+        maxWidth="max-w-sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setDeletingEntry(null)} className={btnSecondary}>Annuler</button>
+            <button
+              type="button"
+              onClick={() => deleteEntryMutation.mutate(deletingEntry)}
+              disabled={deleteEntryMutation.isPending}
+              className={btnDanger}
+            >
+              <Trash2 size={16} /> Supprimer
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Supprimer «&nbsp;{deletingEntry?.name}&nbsp;» de ce mois ?
+          {deletingEntry?.done ? ' La transaction de paiement associée sera aussi supprimée.' : ''}
+          {' '}Si cette obligation a encore un modèle actif dans «&nbsp;Gérer les obligations&nbsp;»,
+          supprimez plutôt ce modèle pour l'arrêter définitivement (sinon la ligne sera recréée).
         </p>
       </Modal>
     </div>
