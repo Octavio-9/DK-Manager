@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, FileText, Search, Download, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, FileText, Search, Download, Printer, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatDate, formatCurrency } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
 import InvoicePreview from '../components/InvoicePreview'
 import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../lib/ui'
-import { downloadInvoicePDF } from '../lib/invoicePdf'
+import { downloadInvoicePDF, printInvoicePDF } from '../lib/invoicePdf'
+import { useAuth } from '../context/AuthContext'
+import { notifyRoles } from '../lib/notifications'
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -26,11 +28,14 @@ const DOC_TYPE = {
   RECU:    { label: 'Reçu',    color: '#10b981' },
 }
 
+const DEFAULT_PAYMENT_TERMS = 'Paiement sous 15 jours'
+
 const EMPTY_FORM = {
   documentType: 'FACTURE',
   clientName: '',
   dueDate: '',
   status: 'PENDING',
+  paymentTerms: DEFAULT_PAYMENT_TERMS,
   sourceInvoiceId: null,
   items: [{ description: '', quantity: 1, price: '', paid: 0 }],
 }
@@ -68,8 +73,10 @@ function generateDocNumber(type) {
 function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
   const [expanded, setExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [printing, setPrinting] = useState(false)
   const s = INVOICE_STATUS[invoice.status] || { label: invoice.status, color: '#6e6a75' }
   const t = DOC_TYPE[invoice.documentType] || DOC_TYPE.FACTURE
+  const docLabel = (DOC_TYPE[invoice.documentType] || DOC_TYPE.FACTURE).label
   const canGenerateReceipt = invoice.documentType === 'FACTURE' && invoice.status === 'PAID'
 
   async function handleDownload(e) {
@@ -78,6 +85,14 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
     try { await downloadInvoicePDF(invoice) }
     catch (err) { console.error('PDF error:', err) }
     finally { setDownloading(false) }
+  }
+
+  async function handlePrint(e) {
+    e.stopPropagation()
+    setPrinting(true)
+    try { await printInvoicePDF(invoice) }
+    catch (err) { console.error('PDF error:', err) }
+    finally { setPrinting(false) }
   }
 
   return (
@@ -108,6 +123,14 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
                 Générer le reçu
               </button>
             )}
+            <button
+              onClick={handlePrint}
+              disabled={printing}
+              title={`Imprimer ${docLabel.toLowerCase()}`}
+              className="rounded-lg p-1.5 text-text-muted border border-c-border hover:bg-bg-hover hover:text-accent-purple transition-colors disabled:opacity-40"
+            >
+              <Printer size={14} />
+            </button>
             <button
               onClick={handleDownload}
               disabled={downloading}
@@ -161,6 +184,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
 
 export default function Invoices() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -209,6 +233,7 @@ export default function Invoices() {
         clientName: clientName || null,
         dueDate: formData.dueDate || null,
         status: formData.status,
+        paymentTerms: formData.paymentTerms?.trim() || null,
         total: isReceipt ? paid : billed,
         sourceInvoiceId: formData.sourceInvoiceId || null,
       }
@@ -229,6 +254,27 @@ export default function Invoices() {
             }))
           )
           if (itemErr) throw itemErr
+        }
+
+        // Notification : facture passée à « payée » ou « en retard »
+        const prevStatus = editingInvoice?.status
+        if (
+          payload.documentType === 'FACTURE' &&
+          payload.status !== prevStatus &&
+          (payload.status === 'PAID' || payload.status === 'OVERDUE')
+        ) {
+          const num = editingInvoice?.invoiceNumber || ''
+          const cli = clientName || editingInvoice?.clientRel?.name || editingInvoice?.clientName || ''
+          const verb = payload.status === 'PAID' ? 'a été payée' : 'est en retard'
+          await notifyRoles(
+            ['Administrateur', 'Manager', 'Commercial'],
+            {
+              message: `La facture ${num}${cli ? ' — ' + cli : ''} ${verb}`,
+              type: 'invoice',
+              link: '/invoices',
+            },
+            { exclude: user?.id },
+          )
         }
       } else {
         const invoiceNumber = generateDocNumber(payload.documentType)
@@ -293,6 +339,7 @@ export default function Invoices() {
       clientName: inv.clientRel?.name || inv.clientName || '',
       dueDate: inv.dueDate || '',
       status: inv.status,
+      paymentTerms: inv.paymentTerms || DEFAULT_PAYMENT_TERMS,
       sourceInvoiceId: inv.sourceInvoiceId || null,
       items: inv.items?.length
         ? inv.items.map(it => ({ description: it.description, quantity: it.quantity, price: it.price, paid: it.paid ?? 0 }))
@@ -309,6 +356,7 @@ export default function Invoices() {
       clientName: facture.clientRel?.name || facture.clientName || '',
       dueDate: facture.dueDate || '',
       status: 'PAID',
+      paymentTerms: facture.paymentTerms || DEFAULT_PAYMENT_TERMS,
       sourceInvoiceId: facture.id,
       items: (facture.items?.length ? facture.items : [{ description: '', quantity: 1, price: '' }]).map((it) => ({
         description: it.description || '',
@@ -381,7 +429,6 @@ export default function Invoices() {
   const lineTotal = form.items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0)
   const totalPaidForm = form.items.reduce((s, it) => s + (Number(it.paid) || 0), 0)
   const isReceipt = form.documentType === 'RECU'
-  const docNoun = isReceipt ? 'reçu' : 'facture'
 
   return (
     <div className="space-y-6">
@@ -550,6 +597,17 @@ export default function Invoices() {
             </div>
           </div>
 
+          <div>
+            <label className={labelClass}>Conditions de paiement</label>
+            <input
+              type="text"
+              value={form.paymentTerms}
+              onChange={(e) => setForm(f => ({ ...f, paymentTerms: e.target.value }))}
+              className={inputClass}
+              placeholder="Ex : Paiement sous 15 jours"
+            />
+          </div>
+
           {/* Items */}
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -665,6 +723,7 @@ export default function Invoices() {
               clientName={form.clientName}
               items={form.items}
               dueDate={form.dueDate}
+              paymentTerms={form.paymentTerms}
               invoiceNumber={editingInvoice?.invoiceNumber}
               dateLabel={
                 editingInvoice?.createdAt

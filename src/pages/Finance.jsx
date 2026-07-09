@@ -44,7 +44,7 @@ async function fetchInvoices() {
 async function fetchTransactions() {
   const { data, error } = await supabase
     .from('Transaction')
-    .select('*, categoryRel:FinanceCategory(id, name, color, type)')
+    .select('*, categoryRel:FinanceCategory(id, name, type)')
     .order('date', { ascending: false })
   if (error) throw error
   return data || []

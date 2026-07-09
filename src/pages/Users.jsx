@@ -162,7 +162,7 @@ export default function Users() {
                   <tr key={member.id} className="border-b border-c-border last:border-0">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <Avatar name={member.name} bg={member.avatarBg} size="sm" />
+                        <Avatar name={member.name} bg={member.avatarBg} src={member.avatarUrl} size="sm" />
                         <span className="font-medium text-text-primary">{member.name}</span>
                       </div>
                     </td>

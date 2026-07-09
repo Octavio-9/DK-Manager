@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { Plus, Pencil, Trash2, Calendar, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
+import { notifyRoles } from '../lib/notifications'
 import { formatCurrency, formatDate } from '../lib/format'
 import {
   PROJECT_STATUS_LABELS,
@@ -25,6 +27,14 @@ const EMPTY_FORM = {
   amountPaid: '',
   startDate: '',
   deadline: '',
+}
+
+// Rôles à prévenir quand un projet entre dans une nouvelle étape (relais de production).
+// PLANNING volontairement absent : pas de notification.
+const STAGE_ROLES = {
+  FILMING: ['Photographe'],
+  EDITING: ['Monteur vidéo'],
+  DELIVERED: ['Administrateur', 'Manager', 'Commercial'],
 }
 
 async function fetchProjects() {
@@ -52,6 +62,7 @@ export default function Projects() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
+  const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [clientFilter, setClientFilter] = useState('ALL')
@@ -79,8 +90,21 @@ export default function Projects() {
   const saveMutation = useMutation({
     mutationFn: async (payload) => {
       if (editingProject) {
+        const prevStatus = editingProject.status
         const { error } = await supabase.from('Project').update(payload).eq('id', editingProject.id)
         if (error) throw error
+        // Notification : projet entré dans une nouvelle étape → prévient le rôle concerné
+        if (payload.status !== prevStatus && STAGE_ROLES[payload.status]) {
+          await notifyRoles(
+            STAGE_ROLES[payload.status],
+            {
+              message: `Le projet « ${payload.name} » est passé en ${PROJECT_STATUS_LABELS[payload.status]}`,
+              type: 'project',
+              link: `/projects/${editingProject.id}`,
+            },
+            { exclude: user?.id },
+          )
+        }
       } else {
         const { error } = await supabase.from('Project').insert(payload)
         if (error) throw error

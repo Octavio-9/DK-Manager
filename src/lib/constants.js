@@ -103,6 +103,7 @@ export const ROUTE_ACCESS = {
   documents:   ['Administrateur', 'Manager', 'Commercial', 'Monteur vidéo', 'Photographe', 'Community manager'],
   ai:          ['Administrateur', 'Manager', 'Community manager', 'Monteur vidéo', 'Photographe', 'Commercial'],
   users:       ['Administrateur'],
+  history:     ['Administrateur'],
   settings:    ['Administrateur', 'Manager'],
 }
 

@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import DKLogo from './DKLogo'
 import { btnPrimary, btnSecondary, inputClass } from '../lib/ui'
+import { fetchUserIdsByRole, notifyUsers } from '../lib/notifications'
 
 const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -39,6 +40,36 @@ function result(current, target) {
   const pct = Math.round(((Number(current) || 0) / t) * 100)
   const color = pct >= 100 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'
   return { text: `${pct} %`, color }
+}
+
+// % d'atteinte brut (null si aucune cible définie)
+function pctValue(current, target) {
+  const t = Number(target) || 0
+  if (t <= 0) return null
+  return ((Number(current) || 0) / t) * 100
+}
+
+// Détecte les lignes qui viennent de franchir 100 % entre l'ancien et le nouveau tableau
+function computeAchievements(prev, next) {
+  const prevRows = new Map()
+  for (const sec of prev?.metrics || []) {
+    for (const row of sec.rows || []) {
+      prevRows.set(`${sec.key || sec.title}::${row.label}`, row)
+    }
+  }
+  const achievements = []
+  for (const sec of next?.metrics || []) {
+    for (const row of sec.rows || []) {
+      const nowPct = pctValue(row.current, row.target)
+      if (nowPct == null || nowPct < 100) continue
+      const prevRow = prevRows.get(`${sec.key || sec.title}::${row.label}`)
+      const prevPct = prevRow ? pctValue(prevRow.current, prevRow.target) : 0
+      if (prevPct == null || prevPct < 100) {
+        achievements.push({ section: sec.title, label: row.label, target: row.target })
+      }
+    }
+  }
+  return achievements
 }
 
 async function fetchBoard(year, month) {
@@ -85,6 +116,26 @@ export default function MonthlyObjectivesBoard() {
           .from('MonthlyBoard')
           .insert({ month, year, data, createdBy: user?.id || null })
         if (error) throw error
+      }
+      // Notification : objectifs venant d'être atteints (franchissement de 100 %)
+      const achievements = computeAchievements(board?.data, data)
+      if (achievements.length > 0) {
+        try {
+          const recipients = await fetchUserIdsByRole(['Administrateur', 'Manager'])
+          for (const a of achievements) {
+            await notifyUsers(
+              recipients,
+              {
+                message: `🎯 Objectif atteint : ${a.label} — ${a.section} (${fmt(a.target)})`,
+                type: 'objective',
+                link: '/dashboard',
+              },
+              { exclude: user?.id },
+            )
+          }
+        } catch (err) {
+          console.error('Notification error:', err)
+        }
       }
     },
     onSuccess: () => {

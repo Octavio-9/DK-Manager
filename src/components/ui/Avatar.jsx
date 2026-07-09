@@ -7,13 +7,15 @@ const SIZES = {
   lg: 'w-14 h-14 text-lg',
 }
 
-export default function Avatar({ name, bg = '#9d3bf1', size = 'md' }) {
+export default function Avatar({ name, bg = '#9d3bf1', size = 'md', src }) {
+  const cls = `flex items-center justify-center overflow-hidden rounded-full font-semibold text-white shrink-0 ${SIZES[size] || SIZES.md}`
   return (
-    <div
-      className={`flex items-center justify-center rounded-full font-semibold text-white shrink-0 ${SIZES[size] || SIZES.md}`}
-      style={{ backgroundColor: bg }}
-    >
-      {getInitials(name)}
+    <div className={cls} style={{ backgroundColor: bg }}>
+      {src ? (
+        <img src={src} alt={name || 'avatar'} className="h-full w-full object-cover" />
+      ) : (
+        getInitials(name)
+      )}
     </div>
   )
 }

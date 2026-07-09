@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Clock, FolderKanban } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Clock, FolderKanban, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
 import { formatDateTime } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
@@ -22,6 +23,12 @@ const EMPTY_FORM = {
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+// Un événement est « archivé » quand sa date de fin (ou de début à défaut) est dépassée.
+function isEventPast(event) {
+  if (!event) return false
+  return new Date(event.endDate || event.date) < new Date()
 }
 
 function getCalendarDays(monthDate) {
@@ -68,6 +75,8 @@ async function fetchProjects() {
 export default function CalendarPage() {
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
+  const { user } = useAuth()
+  const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date()
     return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -249,7 +258,7 @@ export default function CalendarPage() {
                           }}
                           className={`block w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-medium ${
                             idx > 0 ? 'hidden sm:block' : ''
-                          }`}
+                          } ${isEventPast(ev) ? 'opacity-50' : ''}`}
                           style={{
                             backgroundColor: `${ev.typeRel?.color || '#9d3bf1'}26`,
                             color: ev.typeRel?.color || '#9d3bf1',
@@ -279,7 +288,13 @@ export default function CalendarPage() {
         onClose={() => setDetailEvent(null)}
         title={detailEvent?.title}
         footer={
-          detailEvent && (
+          detailEvent &&
+          (isEventPast(detailEvent) && !isAdmin ? (
+            <p className="flex items-center gap-2 text-sm text-text-muted">
+              <Lock size={14} />
+              Événement archivé — modification réservée à l'administrateur
+            </p>
+          ) : (
             <>
               <button
                 type="button"
@@ -296,12 +311,20 @@ export default function CalendarPage() {
                 Modifier
               </button>
             </>
-          )
+          ))
         }
       >
         {detailEvent && (
           <div className="space-y-3 text-sm">
-            {detailEvent.typeRel && <Badge color={detailEvent.typeRel.color}>{detailEvent.typeRel.name}</Badge>}
+            <div className="flex flex-wrap items-center gap-2">
+              {detailEvent.typeRel && <Badge color={detailEvent.typeRel.color}>{detailEvent.typeRel.name}</Badge>}
+              {isEventPast(detailEvent) && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-bg-hover px-2 py-0.5 text-xs font-medium text-text-muted">
+                  <Lock size={11} />
+                  Archivé
+                </span>
+              )}
+            </div>
             <p className="flex items-center gap-2 text-text-secondary">
               <Clock size={14} />
               {formatDateTime(detailEvent.date)}

@@ -7,7 +7,7 @@ export function monthKey(date) {
 export async function fetchObligationTemplates() {
   const { data, error } = await supabase
     .from('ObligationTemplate')
-    .select('*, categoryRel:FinanceCategory(id, name, color)')
+    .select('*, categoryRel:FinanceCategory(id, name)')
     .order('name')
   if (error) throw error
   return data || []
@@ -16,7 +16,7 @@ export async function fetchObligationTemplates() {
 export async function fetchObligationEntries(month) {
   const { data, error } = await supabase
     .from('ObligationEntry')
-    .select('*, categoryRel:FinanceCategory(id, name, color)')
+    .select('*, categoryRel:FinanceCategory(id, name)')
     .eq('month', month)
     .order('name')
   if (error) throw error
@@ -39,7 +39,7 @@ export async function generateMissingEntries(month, templates, existingEntries) 
   const { data, error } = await supabase
     .from('ObligationEntry')
     .insert(rows)
-    .select('*, categoryRel:FinanceCategory(id, name, color)')
+    .select('*, categoryRel:FinanceCategory(id, name)')
   if (error) throw error
   return data || []
 }

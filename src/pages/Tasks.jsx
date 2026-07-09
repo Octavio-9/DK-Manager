@@ -31,7 +31,7 @@ const EMPTY_FORM = {
 async function fetchTasks() {
   const { data, error } = await supabase
     .from('Task')
-    .select('*, assigneeRel:User(id, name, avatarBg), projectRel:Project(id, name)')
+    .select('*, assigneeRel:User(id, name, avatarBg, avatarUrl), projectRel:Project(id, name)')
     .order('createdAt', { ascending: false })
   if (error) throw error
   return data || []
@@ -311,7 +311,7 @@ export default function Tasks() {
                     )}
                     <div className="flex items-center justify-between">
                       {task.assigneeRel ? (
-                        <Avatar name={task.assigneeRel.name} bg={task.assigneeRel.avatarBg} size="sm" />
+                        <Avatar name={task.assigneeRel.name} bg={task.assigneeRel.avatarBg} src={task.assigneeRel.avatarUrl} size="sm" />
                       ) : (
                         <span />
                       )}

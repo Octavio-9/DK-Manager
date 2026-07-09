@@ -25,6 +25,7 @@ export default function InvoicePreview({
   clientName,
   items = [],
   dueDate,
+  paymentTerms,
   invoiceNumber,
   dateLabel,
 }) {
@@ -139,7 +140,7 @@ export default function InvoicePreview({
             </p>
           )}
           <p className="font-bold">Conditions de paiement</p>
-          <p className="text-[#444444]">Paiement sous 15 jours</p>
+          <p className="text-[#444444]">{paymentTerms?.trim() || 'Paiement sous 15 jours'}</p>
         </div>
         <div className="w-40 text-center">
           <div className="mb-1 border-t border-black" />

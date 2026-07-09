@@ -21,6 +21,7 @@ import Team from './pages/Team'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
 import AiContent from './pages/AiContent'
+import History from './pages/History'
 import { btnPrimary } from './lib/ui'
 
 function FullScreenLoader() {
@@ -226,6 +227,14 @@ export default function App() {
           element={
             <ProtectedRoute routeKey="users">
               <Users />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute routeKey="history">
+              <History />
             </ProtectedRoute>
           }
         />

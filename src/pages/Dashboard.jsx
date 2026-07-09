@@ -9,10 +9,10 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import { FolderKanban, ListTodo, Building2, Wallet, AlertTriangle, CalendarClock, Activity } from 'lucide-react'
+import { FolderKanban, ListTodo, Building2, AlertTriangle, CalendarClock, Activity } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
-import { formatCurrency, formatDate, formatDateTime, isOverdue } from '../lib/format'
+import { formatDate, formatDateTime, isOverdue } from '../lib/format'
 import {
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_COLORS,
@@ -68,7 +68,6 @@ export default function Dashboard() {
   const activeProjects = projects.filter((p) => p.status !== 'DELIVERED').length
   const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS').length
   const activeClients = clients.filter((c) => c.status === 'ACTIF').length
-  const totalCollected = projects.reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0)
 
   const chartData = PROJECT_STATUS_OPTIONS.map((status) => ({
     status,
@@ -130,11 +129,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard icon={FolderKanban} label="Projets actifs" value={activeProjects} color="#9d3bf1" />
         <StatCard icon={ListTodo} label="Tâches en cours" value={inProgressTasks} color="#22d3ee" />
         <StatCard icon={Building2} label="Clients actifs" value={activeClients} color="#10b981" />
-        <StatCard icon={Wallet} label="Total encaissé" value={formatCurrency(totalCollected)} color="#f59e0b" />
       </div>
 
       <MonthlyObjectivesBoard />

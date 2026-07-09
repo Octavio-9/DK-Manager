@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Check } from 'lucide-react'
+import { Check, Camera, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ROLE_LABELS, ROLE_COLORS } from '../lib/constants'
 import Avatar from '../components/ui/Avatar'
 import Badge from '../components/ui/Badge'
-import { inputClass, labelClass, btnPrimary, cardClass } from '../lib/ui'
+import { inputClass, labelClass, btnPrimary, btnSecondary, cardClass } from '../lib/ui'
 
 const AVATAR_COLORS = ['#9d3bf1', '#22d3ee', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#6e6a75']
 
@@ -15,12 +15,42 @@ export default function Settings() {
   const { user, refreshUser } = useAuth()
   const [name, setName] = useState(user?.name || '')
   const [avatarBg, setAvatarBg] = useState(user?.avatarBg || '#9d3bf1')
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
+  const [uploading, setUploading] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez choisir une image (PNG, JPEG…).')
+      return
+    }
+    setUploading(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+      const path = `avatars/${user.id}_${Date.now()}.${ext}`
+      const { error } = await supabase.storage
+        .from('documents')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (error) throw error
+      const { data } = supabase.storage.from('documents').getPublicUrl(path)
+      setAvatarUrl(data.publicUrl)
+      toast.success('Photo prête — cliquez sur « Enregistrer » pour valider.')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const profileMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('User').update({ name: name.trim(), avatarBg }).eq('id', user.id)
+      const { error } = await supabase
+        .from('User')
+        .update({ name: name.trim(), avatarBg, avatarUrl })
+        .eq('id', user.id)
       if (error) throw error
     },
     onSuccess: async () => {
@@ -51,10 +81,27 @@ export default function Settings() {
         <h2 className="mb-4 text-base font-semibold text-text-primary">Profil</h2>
 
         <div className="mb-5 flex items-center gap-4">
-          <Avatar name={name || user?.name} bg={avatarBg} size="lg" />
-          <div>
+          <Avatar name={name || user?.name} bg={avatarBg} src={avatarUrl} size="lg" />
+          <div className="space-y-2">
             <p className="font-medium text-text-primary">{user?.email}</p>
             <Badge color={ROLE_COLORS[user?.role]}>{ROLE_LABELS[user?.role] || user?.role}</Badge>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <label className={`${btnSecondary} cursor-pointer px-3 py-1.5 text-xs`}>
+                <Camera size={14} />
+                {uploading ? 'Envoi…' : avatarUrl ? 'Changer la photo' : 'Ajouter une photo'}
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} disabled={uploading} />
+              </label>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl(null)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-c-border px-3 py-1.5 text-xs font-medium text-text-muted transition-colors hover:text-c-danger"
+                >
+                  <Trash2 size={14} />
+                  Supprimer
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -71,7 +118,7 @@ export default function Settings() {
           </div>
 
           <div>
-            <label className={labelClass}>Couleur de l'avatar</label>
+            <label className={labelClass}>Couleur de l'avatar (utilisée sans photo)</label>
             <div className="flex flex-wrap gap-2">
               {AVATAR_COLORS.map((color) => (
                 <button

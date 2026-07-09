@@ -17,6 +17,7 @@ import {
   Circle,
   X,
   Sparkles,
+  History,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './ui/Avatar'
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { key: 'invoices',   path: '/invoices',   label: 'Facturation',     icon: FileText },
   { key: 'documents',  path: '/documents',  label: 'Documents',       icon: FolderOpen },
   { key: 'users',      path: '/users',      label: 'Utilisateurs',    icon: UserCog },
+  { key: 'history',    path: '/history',    label: 'Historique',      icon: History },
 ]
 
 export default function Sidebar({ open = false, onClose = () => {} }) {
@@ -107,7 +109,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
             {onlineCount} utilisateur{onlineCount > 1 ? 's' : ''} en ligne
           </div>
           <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <Avatar name={user?.name} bg={user?.avatarBg} size="md" />
+            <Avatar name={user?.name} bg={user?.avatarBg} src={user?.avatarUrl} size="md" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-text-primary">{user?.name}</p>
               <Badge color={ROLE_COLORS[user?.roleRel?.name || user?.role]}>{ROLE_LABELS[user?.roleRel?.name || user?.role] || user?.roleRel?.name || user?.role}</Badge>

@@ -16,6 +16,7 @@ const PAGE_TITLES = {
   '/invoices': 'Facturation',
   '/team': 'Équipe',
   '/users': 'Utilisateurs',
+  '/history': 'Historique',
   '/settings': 'Paramètres',
 }
 
@@ -120,7 +121,13 @@ export default function Topbar({ onMenuClick = () => {} }) {
                   {notifications.map((n) => (
                     <button
                       key={n.id}
-                      onClick={() => markAsRead(n)}
+                      onClick={() => {
+                        markAsRead(n)
+                        if (n.link) {
+                          setShowNotifs(false)
+                          navigate(n.link)
+                        }
+                      }}
                       className={`block w-full rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-bg-hover ${
                         n.read ? 'text-text-secondary' : 'text-text-primary'
                       }`}
@@ -143,7 +150,7 @@ export default function Topbar({ onMenuClick = () => {} }) {
             onClick={() => setShowProfile((v) => !v)}
             className="flex items-center gap-2 rounded-lg p-1 transition-colors hover:bg-bg-hover"
           >
-            <Avatar name={user?.name} bg={user?.avatarBg} size="sm" />
+            <Avatar name={user?.name} bg={user?.avatarBg} src={user?.avatarUrl} size="sm" />
             <ChevronDown size={16} className="text-text-muted" />
           </button>
 

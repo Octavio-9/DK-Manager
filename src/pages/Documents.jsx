@@ -42,7 +42,7 @@ const EMPTY_FORM = {
 async function fetchDocuments() {
   const { data, error } = await supabase
     .from('Document')
-    .select('*, clientRel:Client(id, name), projectRel:Project(id, name), uploadedByRel:User!uploadedBy(id, name, avatarBg)')
+    .select('*, clientRel:Client(id, name), projectRel:Project(id, name), uploadedByRel:User!uploadedBy(id, name, avatarBg, avatarUrl)')
     .order('createdAt', { ascending: false })
   if (error) throw error
   return data || []
@@ -315,7 +315,7 @@ export default function Documents() {
                 <p>{formatDate(doc.createdAt)}</p>
                 {doc.uploadedByRel && (
                   <p className="flex items-center gap-1.5 pt-0.5">
-                    <Avatar name={doc.uploadedByRel.name} bg={doc.uploadedByRel.avatarBg} size="xs" />
+                    <Avatar name={doc.uploadedByRel.name} bg={doc.uploadedByRel.avatarBg} src={doc.uploadedByRel.avatarUrl} size="xs" />
                     <span>Ajouté par {doc.uploadedByRel.name}</span>
                   </p>
                 )}
@@ -387,7 +387,7 @@ export default function Documents() {
         {/* Qui a ajouté le document */}
         {editingDoc?.uploadedByRel && (
           <div className="mb-4 flex items-center gap-2 text-xs text-text-muted">
-            <Avatar name={editingDoc.uploadedByRel.name} bg={editingDoc.uploadedByRel.avatarBg} size="xs" />
+            <Avatar name={editingDoc.uploadedByRel.name} bg={editingDoc.uploadedByRel.avatarBg} src={editingDoc.uploadedByRel.avatarUrl} size="xs" />
             <span>
               Ajouté par{' '}
               <span className="font-medium text-text-secondary">{editingDoc.uploadedByRel.name}</span>

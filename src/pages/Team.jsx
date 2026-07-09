@@ -25,7 +25,7 @@ export default function Team() {
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {members.map((member) => (
         <div key={member.id} className="flex flex-col items-center rounded-xl border border-c-border bg-bg-card p-4 text-center sm:p-6">
-          <Avatar name={member.name} bg={member.avatarBg} size="lg" />
+          <Avatar name={member.name} bg={member.avatarBg} src={member.avatarUrl} size="lg" />
           <p className="mt-3 font-semibold text-text-primary">{member.name}</p>
           <div className="mt-2">
             <Badge color={ROLE_COLORS[member.roleRel?.name || member.role]}>{ROLE_LABELS[member.roleRel?.name || member.role] || member.roleRel?.name || member.role}</Badge>

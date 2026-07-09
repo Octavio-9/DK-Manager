@@ -167,7 +167,7 @@ export default function InvoicePDF({ invoice, logoSrc }) {
               <Text style={s.paidBy}>{dueDate ? `À régler avant le ${dueDate}` : 'À régler dès réception'}</Text>
             )}
             <Text style={s.condLbl}>Conditions de paiement</Text>
-            <Text style={s.condTxt}>Paiement sous 15 jours</Text>
+            <Text style={s.condTxt}>{invoice.paymentTerms?.trim() || 'Paiement sous 15 jours'}</Text>
           </View>
           <View style={s.sigZone}>
             <View style={s.sigLine} />
