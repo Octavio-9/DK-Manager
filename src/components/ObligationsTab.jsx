@@ -2,18 +2,18 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  ChevronLeft, ChevronRight, CheckCircle2, Circle, Settings2, Plus, Pencil, Trash2,
+  ChevronLeft, ChevronRight, CheckCircle2, Circle, Settings2, Plus, Pencil, Trash2, Eye, EyeOff,
 } from 'lucide-react'
 import {
   fetchObligationTemplates, fetchObligationEntries, generateMissingEntries,
   payObligationEntry, unpayObligationEntry, saveObligationTemplate, setObligationTemplateActive,
-  monthKey,
+  deleteObligationTemplate, monthKey,
 } from '../lib/obligations'
 import { formatCurrency } from '../lib/format'
 import { useAlert } from '../context/AlertContext'
 import Badge from './ui/Badge'
 import Modal from './ui/Modal'
-import { inputClass, labelClass, btnPrimary, btnSecondary } from '../lib/ui'
+import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../lib/ui'
 
 const MONTH_LABEL_FORMAT = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
 const EMPTY_TEMPLATE = { name: '', defaultAmount: '', categoryId: '' }
@@ -31,6 +31,7 @@ export default function ObligationsTab({ categories }) {
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [templateForm, setTemplateForm] = useState(EMPTY_TEMPLATE)
+  const [deletingTemplate, setDeletingTemplate] = useState(null)
 
   const [payModalOpen, setPayModalOpen] = useState(false)
   const [payingEntry, setPayingEntry] = useState(null)
@@ -104,6 +105,17 @@ export default function ObligationsTab({ categories }) {
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, active }) => setObligationTemplateActive(id, active),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['obligation-templates'] }),
+    onError: (e) => toast.error(e.message),
+  })
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id) => deleteObligationTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['obligation-templates'] })
+      queryClient.invalidateQueries({ queryKey: ['obligation-entries', month] })
+      toast.success('Obligation supprimée')
+      setDeletingTemplate(null)
+    },
     onError: (e) => toast.error(e.message),
   })
 
@@ -256,13 +268,22 @@ export default function ObligationsTab({ categories }) {
                     <p className="text-xs text-text-muted">{formatCurrency(t.defaultAmount)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => openEditTemplate(t)} className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary">
+                    <button onClick={() => openEditTemplate(t)} className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary" aria-label="Modifier">
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => toggleActiveMutation.mutate({ id: t.id, active: !t.active })}
+                      className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary"
+                      aria-label={t.active ? 'Désactiver (mettre en pause)' : 'Réactiver'}
+                      title={t.active ? 'Désactiver (mettre en pause)' : 'Réactiver'}
+                    >
+                      {t.active ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                    <button
+                      onClick={() => setDeletingTemplate(t)}
                       className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-c-danger"
-                      aria-label={t.active ? 'Désactiver' : 'Réactiver'}
+                      aria-label="Supprimer définitivement"
+                      title="Supprimer définitivement"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -315,6 +336,32 @@ export default function ObligationsTab({ categories }) {
             </select>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={!!deletingTemplate}
+        onClose={() => setDeletingTemplate(null)}
+        title="Supprimer l'obligation"
+        maxWidth="max-w-sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setDeletingTemplate(null)} className={btnSecondary}>Annuler</button>
+            <button
+              type="button"
+              onClick={() => deleteTemplateMutation.mutate(deletingTemplate.id)}
+              disabled={deleteTemplateMutation.isPending}
+              className={btnDanger}
+            >
+              <Trash2 size={16} /> Supprimer
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Voulez-vous vraiment supprimer l'obligation «&nbsp;{deletingTemplate?.name}&nbsp;» ?
+          Les échéances non payées seront retirées ; les paiements déjà enregistrés
+          restent dans l'historique. Cette action est irréversible.
+        </p>
       </Modal>
     </div>
   )
