@@ -9,3 +9,15 @@
   from   = "/*"
   to     = "/index.html"
   status = 200
+
+# Ne jamais servir une version périmée du service worker ni de la page d'entrée :
+# le navigateur revalide à chaque fois, ce qui permet la détection des mises à jour.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
