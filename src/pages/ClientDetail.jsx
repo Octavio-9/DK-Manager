@@ -94,20 +94,26 @@ export default function ClientDetail() {
   const { data: client, isLoading } = useQuery({
     queryKey: ['client', id],
     queryFn: () => fetchClient(id),
-    onSuccess: (d) => setClientForm({
-      name: d.name || '',
-      type: d.type || 'PARTICULIER',
-      status: d.status || 'PROSPECT',
-      email: d.email || '',
-      phone: d.phone || '',
-      address: d.address || '',
-      notes: d.notes || '',
-      companyName: d.companyName || '',
-      contactName: d.contactName || '',
-      industry: d.industry || '',
-    }),
-    onError: (err) => toast.error(err.message),
   })
+
+  // Ouvre le modal d'édition en pré-remplissant le formulaire à partir du client chargé.
+  // (React Query v5 a supprimé le callback onSuccess de useQuery, on remplit donc à l'ouverture.)
+  const openEdit = () => {
+    if (!client) return
+    setClientForm({
+      name: client.name || '',
+      type: client.type || 'PARTICULIER',
+      status: client.status || 'PROSPECT',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      notes: client.notes || '',
+      companyName: client.companyName || '',
+      contactName: client.contactName || '',
+      industry: client.industry || '',
+    })
+    setEditOpen(true)
+  }
 
   const { data: contacts = [] } = useQuery({
     queryKey: ['client-contacts', id],
@@ -197,7 +203,7 @@ export default function ClientDetail() {
             </div>
           </div>
         </div>
-        <button onClick={() => setEditOpen(true)} className={`${btnPrimary} w-full sm:w-auto`}>
+        <button onClick={openEdit} className={`${btnPrimary} w-full sm:w-auto`}>
           <Pencil size={16} />
           Modifier
         </button>
