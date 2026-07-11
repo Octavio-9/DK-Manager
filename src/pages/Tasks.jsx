@@ -5,6 +5,7 @@ import { Plus, Trash2, Calendar, Play, CheckCircle2, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useAlert } from '../context/AlertContext'
+import { notifyUsers } from '../lib/notifications'
 import { formatDate, isOverdue } from '../lib/format'
 import {
   TASK_STATUS_LABELS,
@@ -92,11 +93,12 @@ export default function Tasks() {
   }, [tasks])
 
   // Prévient la personne assignée via la table Notification (temps réel dans le Topbar)
-  const notifyAssignee = async (assigneeId, title) => {
+  const notifyAssignee = (assigneeId, title) => {
     if (!assigneeId || assigneeId === user?.id) return
-    await supabase.from('Notification').insert({
-      userId: assigneeId,
+    return notifyUsers([assigneeId], {
       message: `${user?.name || 'Un responsable'} vous a assigné la tâche « ${title} »`,
+      type: 'task',
+      link: '/tasks',
     })
   }
 
@@ -148,12 +150,11 @@ export default function Tasks() {
       if (status === 'DONE' && task && task.assigneeId === user?.id) {
         const recipients = managerIds.filter((mid) => mid !== user?.id)
         if (recipients.length > 0) {
-          await supabase.from('Notification').insert(
-            recipients.map((mid) => ({
-              userId: mid,
-              message: `${user?.name || 'Un membre'} a terminé la tâche « ${task.title} »`,
-            }))
-          )
+          await notifyUsers(recipients, {
+            message: `${user?.name || 'Un membre'} a terminé la tâche « ${task.title} »`,
+            type: 'task',
+            link: '/tasks',
+          })
         }
       }
     },

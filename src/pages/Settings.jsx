@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Check, Camera, Trash2 } from 'lucide-react'
+import { Check, Camera, Trash2, Bell, BellOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ROLE_LABELS, ROLE_COLORS } from '../lib/constants'
+import { isPushSupported, getPushPermission, enablePush, disablePush } from '../lib/push'
 import Avatar from '../components/ui/Avatar'
 import Badge from '../components/ui/Badge'
 import { inputClass, labelClass, btnPrimary, btnSecondary, cardClass } from '../lib/ui'
@@ -19,6 +20,49 @@ export default function Settings() {
   const [uploading, setUploading] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+
+  // Notifications push (hors-app). État initial calculé de façon synchrone (support + permission).
+  const [pushState, setPushState] = useState(() =>
+    isPushSupported() ? getPushPermission() : 'unsupported',
+  ) // default | granted | denied | unsupported
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    if (!isPushSupported()) return
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushEnabled(!!sub))
+      .catch(() => {})
+  }, [])
+
+  const handleEnablePush = async () => {
+    setPushBusy(true)
+    try {
+      await enablePush(user.id)
+      setPushEnabled(true)
+      setPushState('granted')
+      toast.success('Notifications activées sur cet appareil')
+    } catch (err) {
+      toast.error(err.message)
+      setPushState(getPushPermission())
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  const handleDisablePush = async () => {
+    setPushBusy(true)
+    try {
+      await disablePush()
+      setPushEnabled(false)
+      toast.success('Notifications désactivées sur cet appareil')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const handlePhoto = async (e) => {
     const file = e.target.files?.[0]
@@ -173,6 +217,34 @@ export default function Settings() {
             Changer le mot de passe
           </button>
         </form>
+      </div>
+
+      <div className={cardClass}>
+        <h2 className="mb-1 text-base font-semibold text-text-primary">Notifications push</h2>
+        <p className="mb-4 text-sm text-text-secondary">
+          Recevez les notifications même lorsque l'app est fermée (tâche assignée, facture payée,
+          objectif atteint…). À activer sur chaque appareil.
+        </p>
+        {pushState === 'unsupported' ? (
+          <p className="text-sm text-text-muted">
+            Non supporté sur ce navigateur. Sur iPhone, ajoutez d'abord l'app à l'écran d'accueil
+            (Partager → « Sur l'écran d'accueil »), puis rouvrez-la depuis l'icône.
+          </p>
+        ) : pushState === 'denied' ? (
+          <p className="text-sm text-c-danger">
+            Notifications bloquées pour cette app. Réautorisez-les dans les réglages du navigateur.
+          </p>
+        ) : pushEnabled ? (
+          <button type="button" onClick={handleDisablePush} disabled={pushBusy} className={btnSecondary}>
+            <BellOff size={16} />
+            Désactiver sur cet appareil
+          </button>
+        ) : (
+          <button type="button" onClick={handleEnablePush} disabled={pushBusy} className={btnPrimary}>
+            <Bell size={16} />
+            Activer sur cet appareil
+          </button>
+        )}
       </div>
     </div>
   )

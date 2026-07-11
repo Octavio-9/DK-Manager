@@ -35,8 +35,30 @@ export async function notifyUsers(userIds, { message, type = null, link = null }
     const rows = ids.map((userId) => ({ userId, message, type, link }))
     const { error } = await supabase.from('Notification').insert(rows)
     if (error) throw error
+    // Notifications push hors-app (best-effort, ne bloque jamais l'action)
+    sendPush(ids, { title: pushTitle(type), body: message, url: link })
   } catch (err) {
     console.error('Notification error:', err)
+  }
+}
+
+// Titre de la notification push selon le type
+function pushTitle(type) {
+  switch (type) {
+    case 'invoice': return 'Facturation'
+    case 'project': return 'Projet'
+    case 'objective': return 'Objectif'
+    case 'task': return 'Tâche'
+    default: return 'DK Manager'
+  }
+}
+
+// Invoque l'Edge Function d'envoi de notifications push (best-effort).
+async function sendPush(userIds, payload) {
+  try {
+    await supabase.functions.invoke('send-push', { body: { userIds, ...payload } })
+  } catch (err) {
+    console.error('Push error:', err)
   }
 }
 
