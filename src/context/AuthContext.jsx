@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [onlineCount, setOnlineCount] = useState(0)
+  const [onlineIds, setOnlineIds] = useState([])
 
   const syncUser = useCallback(async (sess) => {
     if (!sess?.user) {
@@ -103,7 +104,9 @@ export function AuthProvider({ children }) {
     room
       .on('presence', { event: 'sync' }, () => {
         const state = room.presenceState()
-        setOnlineCount(Object.keys(state).length)
+        const ids = Object.keys(state)
+        setOnlineCount(ids.length)
+        setOnlineIds(ids)
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -158,6 +161,7 @@ export function AuthProvider({ children }) {
     user,
     loading,
     onlineCount,
+    onlineIds,
     signIn,
     signUp,
     signInWithGoogle,
