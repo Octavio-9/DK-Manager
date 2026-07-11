@@ -72,6 +72,17 @@ export default function Topbar({ onMenuClick = () => {} }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Badge de l'icône de l'app installée (point rouge + nombre de non-lues).
+  // Fonctionne sur PWA installée : barre des tâches Windows, dock macOS, Android, iOS 16.4+.
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return
+    if (unreadCount > 0) {
+      navigator.setAppBadge(unreadCount).catch(() => {})
+    } else {
+      navigator.clearAppBadge().catch(() => {})
+    }
+  }, [unreadCount])
+
   const markAsRead = async (notif) => {
     if (notif.read) return
     setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)))
