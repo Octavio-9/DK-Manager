@@ -127,7 +127,9 @@ export function AuthProvider({ children }) {
 
     const touch = () => {
       if (document.visibilityState === 'visible') {
-        supabase.rpc('touch_last_seen').catch(() => {})
+        // supabase.rpc() renvoie un « thenable » sans .catch → on enveloppe
+        // dans une vraie Promise pour absorber toute erreur silencieusement.
+        Promise.resolve(supabase.rpc('touch_last_seen')).catch(() => {})
       }
     }
 
