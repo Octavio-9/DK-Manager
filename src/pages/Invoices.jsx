@@ -11,6 +11,7 @@ import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../
 import { downloadInvoicePDF, printInvoicePDF } from '../lib/invoicePdf'
 import { useAuth } from '../context/AuthContext'
 import { notifyRoles } from '../lib/notifications'
+import { syncInvoiceIncome } from '../lib/invoiceIncome'
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -276,6 +277,19 @@ export default function Invoices() {
             { exclude: user?.id },
           )
         }
+
+        // Revenu automatique : crée / met à jour / supprime la transaction liée
+        await syncInvoiceIncome({
+          id: invoiceId,
+          status: payload.status,
+          total: payload.total,
+          documentType: payload.documentType,
+          sourceInvoiceId: payload.sourceInvoiceId,
+          transactionId: editingInvoice?.transactionId || null,
+          clientId: payload.clientId,
+          clientLabel: clientName || editingInvoice?.clientRel?.name || editingInvoice?.clientName || '',
+          invoiceNumber: editingInvoice?.invoiceNumber || '',
+        })
       } else {
         const invoiceNumber = generateDocNumber(payload.documentType)
         const { data: created, error } = await supabase
@@ -296,10 +310,24 @@ export default function Invoices() {
           )
           if (itemErr) throw itemErr
         }
+
+        // Revenu automatique pour un document créé déjà payé (ex : reçu autonome)
+        await syncInvoiceIncome({
+          id: created.id,
+          status: created.status,
+          total: created.total,
+          documentType: created.documentType,
+          sourceInvoiceId: created.sourceInvoiceId,
+          transactionId: null,
+          clientId: created.clientId,
+          clientLabel: clientName || '',
+          invoiceNumber: created.invoiceNumber,
+        })
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
       const noun = form.documentType === 'RECU' ? 'Reçu' : 'Facture'
       toast.success(editingInvoice ? `${noun} mis à jour` : `${noun} créé`)
       closeModal()
@@ -309,11 +337,17 @@ export default function Invoices() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
+      // Supprimer d'abord la transaction Revenu liée (le cas échéant)
+      const { data: inv } = await supabase.from('Invoice').select('transactionId').eq('id', id).maybeSingle()
+      if (inv?.transactionId) {
+        await supabase.from('Transaction').delete().eq('id', inv.transactionId)
+      }
       const { error } = await supabase.from('Invoice').delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
       toast.success('Facture supprimée')
       closeModal()
     },

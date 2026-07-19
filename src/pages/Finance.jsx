@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
 import { formatCurrency, isOverdue } from '../lib/format'
 import {
   TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_COLORS, TRANSACTION_TYPE_OPTIONS,
@@ -78,7 +79,7 @@ const TABS = [
   { key: 'projects', label: 'Projets', icon: Wallet },
 ]
 
-const EMPTY_TX = { type: 'INCOME', amount: '', categoryId: '', description: '', date: new Date().toISOString().slice(0, 10) }
+const EMPTY_TX = { type: 'INCOME', amount: '', categoryId: '', projectId: '', description: '', date: new Date().toISOString().slice(0, 10) }
 
 /* ── Custom tooltip ─────────────────────────────────────────────── */
 
@@ -101,6 +102,8 @@ const ChartTooltip = ({ active, payload, label }) => {
 export default function Finance() {
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
+  const { user } = useAuth()
+  const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [activeTab, setActiveTab] = useState('overview')
   const [txModalOpen, setTxModalOpen] = useState(false)
   const [editingTx, setEditingTx] = useState(null)
@@ -119,8 +122,8 @@ export default function Finance() {
   const totalRevenue  = transactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount || 0), 0)
   const totalExpenses = transactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount || 0), 0)
   const netProfit     = totalRevenue - totalExpenses
-  const totalPending  = projects.reduce((s, p) => s + Math.max(0, (Number(p.budget) || 0) - (Number(p.amountPaid) || 0)), 0)
-  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.total || 0), 0)
+  const totalPending  = invoices.filter(i => i.status === 'PENDING' || i.status === 'OVERDUE').reduce((s, i) => s + Number(i.total || 0), 0)
+  const totalInvoiced = invoices.filter(i => i.documentType === 'FACTURE').reduce((s, i) => s + Number(i.total || 0), 0)
   const invoicesPaid  = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.total || 0), 0)
 
   /* ── Chart: monthly revenue vs expenses ── */
@@ -194,7 +197,7 @@ export default function Finance() {
   }
   const openEditTx = (tx) => {
     setEditingTx(tx)
-    setTxForm({ type: tx.type, amount: tx.amount, categoryId: tx.categoryId || '', description: tx.description || '', date: tx.date?.slice(0, 10) || '' })
+    setTxForm({ type: tx.type, amount: tx.amount, categoryId: tx.categoryId || '', projectId: tx.projectId || '', description: tx.description || '', date: tx.date?.slice(0, 10) || '' })
     setTxModalOpen(true)
   }
   const closeTxModal = () => { setTxModalOpen(false); setEditingTx(null); setTxForm(EMPTY_TX) }
@@ -325,8 +328,8 @@ export default function Finance() {
                       return (
                         <tr
                           key={tx.id}
-                          onClick={() => openEditTx(tx)}
-                          className="cursor-pointer border-b border-c-border last:border-0 hover:bg-bg-hover/30 transition-colors"
+                          onClick={isAdmin ? () => openEditTx(tx) : undefined}
+                          className={`border-b border-c-border last:border-0 ${isAdmin ? 'cursor-pointer hover:bg-bg-hover/30 transition-colors' : ''}`}
                         >
                           <td className="p-4 text-text-muted text-xs whitespace-nowrap">
                             {tx.date ? new Date(tx.date).toLocaleDateString('fr-FR') : '—'}
@@ -412,7 +415,7 @@ export default function Finance() {
         title={editingTx ? 'Modifier la transaction' : 'Nouvelle transaction'}
         footer={
           <>
-            {editingTx && (
+            {isAdmin && editingTx && (
               <button type="button" onClick={() => deleteTxMutation.mutate(editingTx.id)} disabled={deleteTxMutation.isPending} className={btnDanger}>
                 <Trash2 size={15} /> Supprimer
               </button>
@@ -432,6 +435,7 @@ export default function Finance() {
               type: txForm.type,
               amount: Number(txForm.amount),
               categoryId: txForm.categoryId || null,
+              projectId: txForm.projectId || null,
               description: txForm.description || null,
               date: txForm.date || null,
             })
@@ -462,6 +466,13 @@ export default function Finance() {
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label className={labelClass}>Projet (optionnel)</label>
+            <select value={txForm.projectId} onChange={(e) => setTxForm(f => ({ ...f, projectId: e.target.value }))} className={inputClass}>
+              <option value="">— Aucun —</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
           </div>
           <div>
             <label className={labelClass}>Description</label>
