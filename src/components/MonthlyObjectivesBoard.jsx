@@ -87,7 +87,8 @@ export default function MonthlyObjectivesBoard() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const role = user?.roleRel?.name || user?.role
-  const isManager = role === 'Administrateur' || role === 'Manager'
+  // Peuvent éditer le tableau d'objectifs : admins, managers et community managers
+  const canEdit = role === 'Administrateur' || role === 'Manager' || role === 'Community manager'
 
   const now = new Date()
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -214,12 +215,12 @@ export default function MonthlyObjectivesBoard() {
           <button onClick={() => go(1)} className="rounded-lg border border-c-border p-1.5 text-text-secondary hover:bg-bg-hover" title="Mois suivant">
             <ChevronRight size={16} />
           </button>
-          {isManager && board && !editing && (
+          {canEdit && board && !editing && (
             <button onClick={startEdit} className={`${btnSecondary} px-3 py-1.5 text-xs`}>
               <Pencil size={14} /> Modifier
             </button>
           )}
-          {isManager && editing && (
+          {canEdit && editing && (
             <>
               <button onClick={cancelEdit} className={`${btnSecondary} px-3 py-1.5 text-xs`}>
                 <X size={14} /> Annuler
@@ -238,7 +239,7 @@ export default function MonthlyObjectivesBoard() {
       ) : !data ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="text-sm text-text-muted">Aucun tableau d'objectifs pour ce mois.</p>
-          {isManager && (
+          {canEdit && (
             <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className={btnPrimary}>
               <Plus size={15} /> Créer le tableau de ce mois
             </button>

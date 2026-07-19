@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Mail, ListTodo } from 'lucide-react'
+import { Mail, ListTodo, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { formatLastSeen, formatDateTime } from '../lib/format'
 import { ROLE_LABELS, ROLE_COLORS } from '../lib/constants'
 import Avatar from '../components/ui/Avatar'
 import Badge from '../components/ui/Badge'
@@ -19,6 +20,7 @@ export default function Team() {
     queryKey: ['team'],
     queryFn: fetchTeam,
     onError: (err) => toast.error(err.message),
+    refetchInterval: 60000,
   })
 
   if (isLoading) return <p className="text-text-secondary">Chargement…</p>
@@ -41,10 +43,18 @@ export default function Team() {
           <p className="mt-3 font-semibold text-text-primary">{member.name}</p>
           <div className="mt-2 flex flex-col items-center gap-1">
             <Badge color={ROLE_COLORS[member.roleRel?.name || member.role]}>{ROLE_LABELS[member.roleRel?.name || member.role] || member.roleRel?.name || member.role}</Badge>
-            {isOnline && (
+            {isOnline ? (
               <span className="flex items-center gap-1 text-xs font-medium text-c-success">
                 <span className="h-1.5 w-1.5 rounded-full bg-c-success" />
                 En ligne
+              </span>
+            ) : (
+              <span
+                className="flex items-center gap-1 text-xs text-text-muted"
+                title={member.lastSeenAt ? formatDateTime(member.lastSeenAt) : undefined}
+              >
+                <Clock size={12} />
+                {formatLastSeen(member.lastSeenAt)}
               </span>
             )}
           </div>

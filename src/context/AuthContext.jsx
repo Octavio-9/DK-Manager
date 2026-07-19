@@ -119,6 +119,30 @@ export function AuthProvider({ children }) {
     }
   }, [user])
 
+  // Heartbeat — horodate la dernière activité pour l'affichage « Vu il y a X »
+  // sur la page Équipe. On ne bat que lorsque l'onglet est visible, pour que
+  // l'horodatage reflète une présence réelle.
+  useEffect(() => {
+    if (!user) return
+
+    const touch = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.rpc('touch_last_seen').catch(() => {})
+      }
+    }
+
+    touch()
+    const interval = setInterval(touch, 60000)
+    document.addEventListener('visibilitychange', touch)
+    window.addEventListener('focus', touch)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', touch)
+      window.removeEventListener('focus', touch)
+    }
+  }, [user])
+
   const signIn = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error

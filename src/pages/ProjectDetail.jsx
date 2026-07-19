@@ -59,6 +59,16 @@ async function fetchProjectEvents(projectId) {
   return data || []
 }
 
+// Transactions financières rattachées à ce projet (pour le total « Revenus liés »)
+async function fetchProjectTransactions(projectId) {
+  const { data, error } = await supabase
+    .from('Transaction')
+    .select('amount, type')
+    .eq('projectId', projectId)
+  if (error) throw error
+  return data || []
+}
+
 async function fetchMembers() {
   const { data, error } = await supabase.from('User').select('id, name, avatarBg').order('name')
   if (error) throw error
@@ -111,6 +121,7 @@ export default function ProjectDetail() {
   const { data: tasks = [] } = useQuery({ queryKey: ['project-tasks', id], queryFn: () => fetchProjectTasks(id) })
   const { data: productions = [] } = useQuery({ queryKey: ['project-productions', id], queryFn: () => fetchProjectProductions(id) })
   const { data: events = [] } = useQuery({ queryKey: ['project-events', id], queryFn: () => fetchProjectEvents(id) })
+  const { data: projectTransactions = [] } = useQuery({ queryKey: ['project-transactions', id], queryFn: () => fetchProjectTransactions(id) })
   const { data: members = [] } = useQuery({ queryKey: ['members-list'], queryFn: fetchMembers })
 
   /* Task mutations */
@@ -178,6 +189,11 @@ export default function ProjectDetail() {
   const taskDone = tasks.filter(t => t.status === 'DONE').length
   const taskTotal = tasks.length
 
+  // Revenus liés = somme des transactions de type « Revenu » rattachées à ce projet
+  const linkedRevenue = projectTransactions
+    .filter((t) => t.type === 'INCOME')
+    .reduce((s, t) => s + Number(t.amount || 0), 0)
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -201,7 +217,7 @@ export default function ProjectDetail() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-xl border border-c-border bg-bg-card p-4">
           <p className="text-xs text-text-muted">Tâches</p>
           <p className="mt-1 text-lg font-bold text-accent-purple">{taskDone}/{taskTotal}</p>
@@ -214,6 +230,11 @@ export default function ProjectDetail() {
         <div className="rounded-xl border border-c-border bg-bg-card p-4">
           <p className="text-xs text-text-muted">Encaissé</p>
           <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(project.amountPaid)}</p>
+        </div>
+        <div className="rounded-xl border border-c-border bg-bg-card p-4">
+          <p className="text-xs text-text-muted">Revenus liés</p>
+          <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(linkedRevenue)}</p>
+          <p className="text-xs text-text-muted">transactions</p>
         </div>
         <div className="rounded-xl border border-c-border bg-bg-card p-4">
           <p className="text-xs text-text-muted">Deadline</p>

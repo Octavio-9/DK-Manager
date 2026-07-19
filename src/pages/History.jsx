@@ -9,13 +9,39 @@ import { inputClass } from '../lib/ui'
 
 const PAGE_SIZE = 50
 
-const ENTITY_LABELS = { Event: 'événement', Project: 'projet', Task: 'tâche' }
+const ENTITY_LABELS = {
+  Event: 'événement',
+  Project: 'projet',
+  Task: 'tâche',
+  Client: 'client',
+  ClientContact: 'contact',
+  Production: 'production',
+  Invoice: 'facture',
+  Transaction: 'transaction',
+  Document: 'document',
+  FinanceCategory: 'catégorie financière',
+  ObligationTemplate: 'dépense obligatoire',
+  SocialPost: 'publication éditoriale',
+  MonthlyBoard: "tableau d'objectifs",
+  User: 'utilisateur',
+}
 
 const ENTITY_FILTERS = [
   { value: '', label: 'Toutes les entités' },
-  { value: 'Event', label: 'Événements' },
   { value: 'Project', label: 'Projets' },
   { value: 'Task', label: 'Tâches' },
+  { value: 'Event', label: 'Événements' },
+  { value: 'Client', label: 'Clients' },
+  { value: 'ClientContact', label: 'Contacts' },
+  { value: 'Production', label: 'Productions' },
+  { value: 'Invoice', label: 'Factures' },
+  { value: 'Transaction', label: 'Transactions' },
+  { value: 'Document', label: 'Documents' },
+  { value: 'FinanceCategory', label: 'Catégories financières' },
+  { value: 'ObligationTemplate', label: 'Dépenses obligatoires' },
+  { value: 'SocialPost', label: 'Éditorial' },
+  { value: 'MonthlyBoard', label: 'Objectifs' },
+  { value: 'User', label: 'Utilisateurs' },
 ]
 
 const ACTION_FILTERS = [
