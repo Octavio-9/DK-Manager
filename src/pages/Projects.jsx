@@ -267,7 +267,15 @@ export default function Projects() {
                   <span className="flex items-center gap-1">
                     <Calendar size={12} /> {formatDate(project.deadline)}
                   </span>
-                  <Pencil size={14} className="text-text-muted" />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); openEditModal(project) }}
+                    className="rounded-lg p-1 text-text-muted transition-colors hover:bg-bg-hover hover:text-accent-purple"
+                    title="Modifier le projet"
+                    aria-label="Modifier le projet"
+                  >
+                    <Pencil size={14} />
+                  </button>
                 </div>
               </div>
             )
