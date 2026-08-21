@@ -182,17 +182,17 @@ export default function ProjectDetail() {
   if (isLoading) return <p className="text-text-secondary">Chargement…</p>
   if (!project) return <p className="text-text-secondary">Projet introuvable.</p>
 
+  // Encaissé = somme des transactions de type « Revenu » rattachées à ce projet
+  const encaisse = projectTransactions
+    .filter((t) => t.type === 'INCOME')
+    .reduce((s, t) => s + Number(t.amount || 0), 0)
+
   const progress = project.budget > 0
-    ? Math.min(100, Math.round((project.amountPaid / project.budget) * 100))
+    ? Math.min(100, Math.round((encaisse / project.budget) * 100))
     : 0
 
   const taskDone = tasks.filter(t => t.status === 'DONE').length
   const taskTotal = tasks.length
-
-  // Revenus liés = somme des transactions de type « Revenu » rattachées à ce projet
-  const linkedRevenue = projectTransactions
-    .filter((t) => t.type === 'INCOME')
-    .reduce((s, t) => s + Number(t.amount || 0), 0)
 
   return (
     <div className="space-y-6">
@@ -217,7 +217,7 @@ export default function ProjectDetail() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-xl border border-c-border bg-bg-card p-4">
           <p className="text-xs text-text-muted">Tâches</p>
           <p className="mt-1 text-lg font-bold text-accent-purple">{taskDone}/{taskTotal}</p>
@@ -229,12 +229,8 @@ export default function ProjectDetail() {
         </div>
         <div className="rounded-xl border border-c-border bg-bg-card p-4">
           <p className="text-xs text-text-muted">Encaissé</p>
-          <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(project.amountPaid)}</p>
-        </div>
-        <div className="rounded-xl border border-c-border bg-bg-card p-4">
-          <p className="text-xs text-text-muted">Revenus liés</p>
-          <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(linkedRevenue)}</p>
-          <p className="text-xs text-text-muted">transactions</p>
+          <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(encaisse)}</p>
+          <p className="text-xs text-text-muted">transactions liées</p>
         </div>
         <div className="rounded-xl border border-c-border bg-bg-card p-4">
           <p className="text-xs text-text-muted">Deadline</p>
@@ -283,7 +279,7 @@ export default function ProjectDetail() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm">
             <div><p className="text-xs text-text-muted">Début</p><p className="text-text-primary">{project.startDate ? formatDate(project.startDate) : '—'}</p></div>
             <div><p className="text-xs text-text-muted">Deadline</p><p className="text-text-primary">{project.deadline ? formatDate(project.deadline) : '—'}</p></div>
-            <div><p className="text-xs text-text-muted">Solde restant</p><p className="text-text-primary">{formatCurrency(Math.max(0, project.budget - project.amountPaid))}</p></div>
+            <div><p className="text-xs text-text-muted">Solde restant</p><p className="text-text-primary">{formatCurrency(Math.max(0, project.budget - encaisse))}</p></div>
           </div>
         </div>
       )}
@@ -370,17 +366,17 @@ export default function ProjectDetail() {
             </div>
             <div className="rounded-xl border border-c-border bg-bg-card p-4">
               <p className="text-xs text-text-muted">Montant encaissé</p>
-              <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(project.amountPaid)}</p>
+              <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(encaisse)}</p>
             </div>
             <div className="rounded-xl border border-c-border bg-bg-card p-4">
               <p className="text-xs text-text-muted">Solde restant</p>
-              <p className="mt-1 text-lg font-bold text-c-warning">{formatCurrency(Math.max(0, project.budget - project.amountPaid))}</p>
+              <p className="mt-1 text-lg font-bold text-c-warning">{formatCurrency(Math.max(0, project.budget - encaisse))}</p>
             </div>
           </div>
           <div className="rounded-xl border border-c-border bg-bg-card p-5">
             <h4 className="text-sm font-semibold text-text-primary mb-3">Progression du paiement</h4>
             <div className="mb-2 flex justify-between text-xs text-text-muted">
-              <span>{formatCurrency(project.amountPaid)} encaissé</span>
+              <span>{formatCurrency(encaisse)} encaissé</span>
               <span>{progress}%</span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full bg-bg-hover">

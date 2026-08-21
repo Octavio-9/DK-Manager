@@ -7,7 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import {
   Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Plus, Trash2, BarChart3, List, ListChecks,
+  Plus, Trash2, BarChart3, List, ListChecks, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAlert } from '../context/AlertContext'
@@ -108,6 +108,10 @@ export default function Finance() {
   const [txModalOpen, setTxModalOpen] = useState(false)
   const [editingTx, setEditingTx] = useState(null)
   const [txForm, setTxForm] = useState(EMPTY_TX)
+  const [monthDate, setMonthDate] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
 
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ['finance-projects'], queryFn: fetchProjects, onError: (e) => toast.error(e.message),
@@ -125,6 +129,26 @@ export default function Finance() {
   const totalPending  = invoices.filter(i => i.status === 'PENDING' || i.status === 'OVERDUE').reduce((s, i) => s + Number(i.total || 0), 0)
   const totalInvoiced = invoices.filter(i => i.documentType === 'FACTURE').reduce((s, i) => s + Number(i.total || 0), 0)
   const invoicesPaid  = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.total || 0), 0)
+
+  /* ── Vue mensuelle ── */
+  const monthLabel = useMemo(
+    () => new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
+      .format(monthDate).replace(/^./, (c) => c.toUpperCase()),
+    [monthDate],
+  )
+  const goToMonth = (offset) => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + offset, 1))
+
+  const monthTransactions = useMemo(
+    () => transactions.filter((t) => {
+      if (!t.date) return false
+      const d = new Date(t.date)
+      return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth()
+    }),
+    [transactions, monthDate],
+  )
+  const monthRevenue  = monthTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount || 0), 0)
+  const monthExpenses = monthTransactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount || 0), 0)
+  const monthProfit   = monthRevenue - monthExpenses
 
   /* ── Chart: monthly revenue vs expenses ── */
   const monthlyData = useMemo(() => {
@@ -146,17 +170,16 @@ export default function Finance() {
     return Object.values(map)
   }, [transactions])
 
-  /* ── Chart: expenses by category ── */
+  /* ── Chart: expenses by category (mois sélectionné) ── */
   const categoryData = useMemo(() => {
     const map = {}
-    transactions.filter(t => t.type === 'EXPENSE').forEach((t) => {
+    monthTransactions.filter(t => t.type === 'EXPENSE').forEach((t) => {
       const name = t.categoryRel?.name || 'Autre'
-      const color = t.categoryRel?.color || '#6e6a75'
-      map[name] = map[name] || { name, value: 0, color }
+      map[name] = map[name] || { name, value: 0 }
       map[name].value += Number(t.amount || 0)
     })
     return Object.values(map).filter(e => e.value > 0)
-  }, [transactions])
+  }, [monthTransactions])
 
   /* ── Mutations ── */
   const saveTxMutation = useMutation({
@@ -191,8 +214,13 @@ export default function Finance() {
   })
 
   const openCreateTx = () => {
+    const now = new Date()
+    const sameMonth = now.getFullYear() === monthDate.getFullYear() && now.getMonth() === monthDate.getMonth()
+    const defaultDate = sameMonth
+      ? now.toISOString().slice(0, 10)
+      : `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}-01`
     setEditingTx(null)
-    setTxForm({ ...EMPTY_TX, date: new Date().toISOString().slice(0, 10) })
+    setTxForm({ ...EMPTY_TX, date: defaultDate })
     setTxModalOpen(true)
   }
   const openEditTx = (tx) => {
@@ -204,24 +232,18 @@ export default function Finance() {
 
   return (
     <div className="space-y-6">
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {[
-          { label: 'Revenus',      value: formatCurrency(totalRevenue),  icon: TrendingUp,   color: '#10b981' },
-          { label: 'Dépenses',     value: formatCurrency(totalExpenses), icon: TrendingDown, color: '#ef4444' },
-          { label: 'Bénéfice net', value: formatCurrency(netProfit),     icon: netProfit >= 0 ? ArrowUpRight : ArrowDownRight, color: netProfit >= 0 ? '#10b981' : '#ef4444' },
-          { label: 'Facturé',      value: formatCurrency(totalInvoiced), icon: Wallet,       color: '#9d3bf1' },
-          { label: 'À encaisser',  value: formatCurrency(totalPending),  icon: Wallet,       color: '#f59e0b' },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-c-border bg-bg-card p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs text-text-muted">{s.label}</p>
-              <s.icon size={15} style={{ color: s.color }} />
-            </div>
-            <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
-          </div>
-        ))}
-      </div>
+      {/* Sélecteur de mois (Vue d'ensemble & Transactions) */}
+      {(activeTab === 'overview' || activeTab === 'transactions') && (
+        <div className="flex items-center gap-2">
+          <button onClick={() => goToMonth(-1)} className={btnSecondary} aria-label="Mois précédent">
+            <ChevronLeft size={15} />
+          </button>
+          <p className="min-w-[150px] text-center text-sm font-semibold capitalize text-text-primary">{monthLabel}</p>
+          <button onClick={() => goToMonth(1)} className={btnSecondary} aria-label="Mois suivant">
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-xl border border-c-border bg-bg-panel p-1">
@@ -243,7 +265,68 @@ export default function Finance() {
 
       {/* ── Tab: Overview ── */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6">
+          {/* Ce mois-ci */}
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Ce mois-ci — {monthLabel}</h3>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {[
+                { label: 'Revenus du mois',  value: formatCurrency(monthRevenue),  icon: TrendingUp,   color: '#10b981' },
+                { label: 'Dépenses du mois', value: formatCurrency(monthExpenses), icon: TrendingDown, color: '#ef4444' },
+                { label: 'Bénéfice du mois', value: formatCurrency(monthProfit),   icon: monthProfit >= 0 ? ArrowUpRight : ArrowDownRight, color: monthProfit >= 0 ? '#10b981' : '#ef4444' },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl border border-c-border bg-bg-card p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs text-text-muted">{s.label}</p>
+                    <s.icon size={15} style={{ color: s.color }} />
+                  </div>
+                  <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Total entreprise (depuis le début) */}
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Total entreprise (depuis le début)</h3>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {[
+                { label: "Chiffre d'affaires total", value: formatCurrency(totalRevenue),  icon: TrendingUp,   color: '#10b981' },
+                { label: 'Dépenses totales',         value: formatCurrency(totalExpenses), icon: TrendingDown, color: '#ef4444' },
+                { label: 'Bénéfice net total',       value: formatCurrency(netProfit),     icon: netProfit >= 0 ? ArrowUpRight : ArrowDownRight, color: netProfit >= 0 ? '#10b981' : '#ef4444' },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl border border-c-border bg-bg-card p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs text-text-muted">{s.label}</p>
+                    <s.icon size={15} style={{ color: s.color }} />
+                  </div>
+                  <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Factures (global) */}
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Factures</h3>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {[
+                { label: 'Facturé',     value: formatCurrency(totalInvoiced), icon: Wallet, color: '#9d3bf1' },
+                { label: 'À encaisser', value: formatCurrency(totalPending),  icon: Wallet, color: '#f59e0b' },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl border border-c-border bg-bg-card p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs text-text-muted">{s.label}</p>
+                    <s.icon size={15} style={{ color: s.color }} />
+                  </div>
+                  <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Graphiques */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Area chart */}
           <div className="lg:col-span-2 rounded-xl border border-c-border bg-bg-card p-5">
             <h3 className="mb-4 text-sm font-semibold text-text-primary">Revenus vs Dépenses (6 mois)</h3>
@@ -272,7 +355,7 @@ export default function Finance() {
 
           {/* Donut chart */}
           <div className="rounded-xl border border-c-border bg-bg-card p-5">
-            <h3 className="mb-4 text-sm font-semibold text-text-primary">Dépenses par catégorie</h3>
+            <h3 className="mb-4 text-sm font-semibold text-text-primary">Dépenses par catégorie — {monthLabel}</h3>
             {categoryData.length === 0 ? (
               <p className="text-sm text-text-muted">Aucune dépense enregistrée.</p>
             ) : (
@@ -293,6 +376,7 @@ export default function Finance() {
               </ResponsiveContainer>
             )}
           </div>
+          </div>
         </div>
       )}
 
@@ -300,15 +384,15 @@ export default function Finance() {
       {activeTab === 'transactions' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text-primary">{transactions.length} transaction{transactions.length !== 1 ? 's' : ''}</h3>
+            <h3 className="text-sm font-semibold text-text-primary">{monthTransactions.length} transaction{monthTransactions.length !== 1 ? 's' : ''} — {monthLabel}</h3>
             <button onClick={openCreateTx} className={btnPrimary}>
               <Plus size={15} /> Ajouter
             </button>
           </div>
           {loadingTx ? (
             <p className="text-text-secondary">Chargement…</p>
-          ) : transactions.length === 0 ? (
-            <p className="text-sm text-text-muted">Aucune transaction.</p>
+          ) : monthTransactions.length === 0 ? (
+            <p className="text-sm text-text-muted">Aucune transaction pour {monthLabel}.</p>
           ) : (
             <div className="overflow-hidden rounded-xl border border-c-border bg-bg-card">
               <div className="overflow-x-auto">
@@ -323,7 +407,7 @@ export default function Finance() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((tx) => {
+                    {monthTransactions.map((tx) => {
                       const typeColor = TRANSACTION_TYPE_COLORS[tx.type] || '#6e6a75'
                       return (
                         <tr
