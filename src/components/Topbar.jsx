@@ -90,6 +90,12 @@ export default function Topbar({ onMenuClick = () => {} }) {
     await supabase.from('Notification').update({ read: true }).eq('id', notif.id)
   }
 
+  const markAllAsRead = async () => {
+    if (unreadCount === 0 || !user) return
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    await supabase.from('Notification').update({ read: true }).eq('userId', user.id).eq('read', false)
+  }
+
   const handleLogout = async () => {
     await signOut()
     navigate('/login')
@@ -123,7 +129,17 @@ export default function Topbar({ onMenuClick = () => {} }) {
 
           {showNotifs && (
             <div className="absolute right-0 z-40 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-xl border border-c-border bg-bg-card p-2 shadow-2xl sm:w-80">
-              <p className="px-2 py-1 text-xs font-semibold text-text-muted">Notifications</p>
+              <div className="flex items-center justify-between px-2 py-1">
+                <p className="text-xs font-semibold text-text-muted">Notifications</p>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs font-medium text-accent-purple transition-colors hover:text-accent-purple/80"
+                  >
+                    Tout marquer comme lu
+                  </button>
+                )}
+              </div>
               {notifications.length === 0 ? (
                 <p className="px-2 py-4 text-center text-sm text-text-muted">
                   Aucune notification

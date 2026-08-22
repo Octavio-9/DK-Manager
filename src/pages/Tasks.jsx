@@ -102,6 +102,16 @@ export default function Tasks() {
     })
   }
 
+  // Prévient l'assigné quand sa tâche est mise « en révision » (exclut l'auteur)
+  const notifyReview = (assigneeId, title) => {
+    if (!assigneeId || assigneeId === user?.id) return
+    return notifyUsers([assigneeId], {
+      message: `${user?.name || 'Un responsable'} a mis votre tâche « ${title} » en révision`,
+      type: 'task',
+      link: '/tasks',
+    })
+  }
+
   const saveMutation = useMutation({
     mutationFn: async (payload) => {
       if (editingTask) {
@@ -111,6 +121,10 @@ export default function Tasks() {
         // Notifier uniquement si l'assigné a changé
         if (payload.assigneeId && payload.assigneeId !== prevAssignee) {
           await notifyAssignee(payload.assigneeId, payload.title)
+        }
+        // Notifier l'assigné si la tâche vient de passer « en révision »
+        if (payload.status === 'REVIEW' && editingTask.status !== 'REVIEW') {
+          await notifyReview(payload.assigneeId, payload.title)
         }
       } else {
         const { error } = await supabase.from('Task').insert(payload)
@@ -146,6 +160,10 @@ export default function Tasks() {
       const task = tasks.find((t) => t.id === id)
       const { error } = await supabase.from('Task').update({ status }).eq('id', id)
       if (error) throw error
+      // Quand un responsable met la tâche en révision, prévenir l'assigné
+      if (status === 'REVIEW' && task && task.status !== 'REVIEW') {
+        await notifyReview(task.assigneeId, task.title)
+      }
       // Quand l'assigné termine sa tâche, prévenir les managers/admins
       if (status === 'DONE' && task && task.assigneeId === user?.id) {
         const recipients = managerIds.filter((mid) => mid !== user?.id)
