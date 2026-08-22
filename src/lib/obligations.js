@@ -36,14 +36,16 @@ export async function generateMissingEntries(month, templates, existingEntries) 
     categoryId: t.categoryId,
   }))
 
-  // Idempotent : si une échéance existe déjà pour ce (template, mois) — par ex.
-  // un double déclenchement de l'effet de génération — on l'ignore au lieu de
-  // planter sur la contrainte d'unicité « obligation_entry_template_month_key ».
   const { data, error } = await supabase
     .from('ObligationEntry')
-    .upsert(rows, { onConflict: 'templateId,month', ignoreDuplicates: true })
+    .insert(rows)
     .select('*, categoryRel:FinanceCategory(id, name)')
-  if (error) throw error
+  if (error) {
+    // 23505 = violation d'unicité (template, mois) : les échéances existent déjà
+    // (ex. double déclenchement de l'effet de génération). On ignore sans planter.
+    if (error.code === '23505') return []
+    throw error
+  }
   return data || []
 }
 
