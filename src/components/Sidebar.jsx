@@ -18,6 +18,7 @@ import {
   X,
   Sparkles,
   History,
+  Landmark,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './ui/Avatar'
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { key: 'finance',    path: '/finance',    label: 'Finance',         icon: Wallet },
   { key: 'invoices',   path: '/invoices',   label: 'Facturation',     icon: FileText },
   { key: 'documents',  path: '/documents',  label: 'Documents',       icon: FolderOpen },
+  { key: 'bilan',      path: '/bilan',      label: 'Bilan global',    icon: Landmark },
   { key: 'users',      path: '/users',      label: 'Utilisateurs',    icon: UserCog },
   { key: 'history',    path: '/history',    label: 'Historique',      icon: History },
 ]

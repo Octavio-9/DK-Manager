@@ -20,6 +20,7 @@ import Badge from '../components/ui/Badge'
 import StatCard from '../components/ui/StatCard'
 import Modal from '../components/ui/Modal'
 import ObligationsTab from '../components/ObligationsTab'
+import { EnterpriseTotalsButton } from '../components/EnterpriseTotals'
 import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../lib/ui'
 
 /* ── Fetch helpers ──────────────────────────────────────────────── */
@@ -122,14 +123,6 @@ export default function Finance() {
   })
   const { data: categories = [] } = useQuery({ queryKey: ['finance-categories'], queryFn: fetchCategories })
 
-  /* ── KPIs ── */
-  const totalRevenue  = transactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount || 0), 0)
-  const totalExpenses = transactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount || 0), 0)
-  const netProfit     = totalRevenue - totalExpenses
-  const totalPending  = invoices.filter(i => i.status === 'PENDING' || i.status === 'OVERDUE').reduce((s, i) => s + Number(i.total || 0), 0)
-  const totalInvoiced = invoices.filter(i => i.documentType === 'FACTURE').reduce((s, i) => s + Number(i.total || 0), 0)
-  const invoicesPaid  = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.total || 0), 0)
-
   /* ── Vue mensuelle ── */
   const monthLabel = useMemo(
     () => new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
@@ -149,6 +142,19 @@ export default function Finance() {
   const monthRevenue  = monthTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount || 0), 0)
   const monthExpenses = monthTransactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount || 0), 0)
   const monthProfit   = monthRevenue - monthExpenses
+
+  /* ── Factures du mois sélectionné (créées ce mois-ci) ── */
+  const monthInvoices = useMemo(
+    () => invoices.filter((i) => {
+      if (!i.createdAt) return false
+      const d = new Date(i.createdAt)
+      return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth()
+    }),
+    [invoices, monthDate],
+  )
+  const monthFactures  = monthInvoices.filter(i => i.documentType === 'FACTURE')
+  const monthInvoiced  = monthFactures.reduce((s, i) => s + Number(i.total || 0), 0)
+  const monthPending   = monthInvoices.filter(i => i.status === 'PENDING' || i.status === 'OVERDUE').reduce((s, i) => s + Number(i.total || 0), 0)
 
   /* ── Chart: monthly revenue vs expenses ── */
   const monthlyData = useMemo(() => {
@@ -232,18 +238,21 @@ export default function Finance() {
 
   return (
     <div className="space-y-6">
-      {/* Sélecteur de mois (Vue d'ensemble & Transactions) */}
-      {(activeTab === 'overview' || activeTab === 'transactions') && (
-        <div className="flex items-center gap-2">
-          <button onClick={() => goToMonth(-1)} className={btnSecondary} aria-label="Mois précédent">
-            <ChevronLeft size={15} />
-          </button>
-          <p className="min-w-[150px] text-center text-sm font-semibold capitalize text-text-primary">{monthLabel}</p>
-          <button onClick={() => goToMonth(1)} className={btnSecondary} aria-label="Mois suivant">
-            <ChevronRight size={15} />
-          </button>
-        </div>
-      )}
+      {/* En-tête : sélecteur de mois + accès masqué aux totaux entreprise (admin) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {(activeTab === 'overview' || activeTab === 'transactions') ? (
+          <div className="flex items-center gap-2">
+            <button onClick={() => goToMonth(-1)} className={btnSecondary} aria-label="Mois précédent">
+              <ChevronLeft size={15} />
+            </button>
+            <p className="min-w-[150px] text-center text-sm font-semibold capitalize text-text-primary">{monthLabel}</p>
+            <button onClick={() => goToMonth(1)} className={btnSecondary} aria-label="Mois suivant">
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        ) : <div />}
+        {isAdmin && <EnterpriseTotalsButton />}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-xl border border-c-border bg-bg-panel p-1">
@@ -268,7 +277,12 @@ export default function Finance() {
         <div className="space-y-6">
           {/* Ce mois-ci */}
           <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Ce mois-ci — {monthLabel}</h3>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Ce mois-ci — {monthLabel}</h3>
+              <span className="text-xs text-text-muted">
+                {monthTransactions.length} transaction{monthTransactions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
               {[
                 { label: 'Revenus du mois',  value: formatCurrency(monthRevenue),  icon: TrendingUp,   color: '#10b981' },
@@ -286,33 +300,18 @@ export default function Finance() {
             </div>
           </div>
 
-          {/* Total entreprise (depuis le début) */}
+          {/* Factures du mois */}
           <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Total entreprise (depuis le début)</h3>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-              {[
-                { label: "Chiffre d'affaires total", value: formatCurrency(totalRevenue),  icon: TrendingUp,   color: '#10b981' },
-                { label: 'Dépenses totales',         value: formatCurrency(totalExpenses), icon: TrendingDown, color: '#ef4444' },
-                { label: 'Bénéfice net total',       value: formatCurrency(netProfit),     icon: netProfit >= 0 ? ArrowUpRight : ArrowDownRight, color: netProfit >= 0 ? '#10b981' : '#ef4444' },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-c-border bg-bg-card p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-xs text-text-muted">{s.label}</p>
-                    <s.icon size={15} style={{ color: s.color }} />
-                  </div>
-                  <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
-                </div>
-              ))}
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Factures — {monthLabel}</h3>
+              <span className="text-xs text-text-muted">
+                {monthFactures.length} facture{monthFactures.length !== 1 ? 's' : ''}
+              </span>
             </div>
-          </div>
-
-          {/* Factures (global) */}
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Factures</h3>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
               {[
-                { label: 'Facturé',     value: formatCurrency(totalInvoiced), icon: Wallet, color: '#9d3bf1' },
-                { label: 'À encaisser', value: formatCurrency(totalPending),  icon: Wallet, color: '#f59e0b' },
+                { label: 'Facturé (mois)',     value: formatCurrency(monthInvoiced), icon: Wallet, color: '#9d3bf1' },
+                { label: 'À encaisser (mois)', value: formatCurrency(monthPending),  icon: Wallet, color: '#f59e0b' },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border border-c-border bg-bg-card p-4">
                   <div className="mb-2 flex items-center justify-between">

@@ -17,6 +17,7 @@ const PAGE_TITLES = {
   '/team': 'Équipe',
   '/users': 'Utilisateurs',
   '/history': 'Historique',
+  '/bilan': 'Bilan global',
   '/settings': 'Paramètres',
 }
 

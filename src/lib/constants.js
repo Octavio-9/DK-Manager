@@ -104,6 +104,7 @@ export const ROUTE_ACCESS = {
   ai:          ['Administrateur', 'Manager', 'Community manager', 'Monteur vidéo', 'Photographe', 'Commercial'],
   users:       ['Administrateur'],
   history:     ['Administrateur'],
+  bilan:       ['Administrateur'],
   settings:    ['Administrateur', 'Manager'],
 }
 

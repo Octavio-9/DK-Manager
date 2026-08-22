@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, FileText, Search, Download, Printer, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, FileText, Search, Download, Printer, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatDate, formatCurrency } from '../lib/format'
 import Badge from '../components/ui/Badge'
@@ -12,6 +12,7 @@ import { downloadInvoicePDF, printInvoicePDF } from '../lib/invoicePdf'
 import { useAuth } from '../context/AuthContext'
 import { notifyRoles } from '../lib/notifications'
 import { syncInvoiceIncome } from '../lib/invoiceIncome'
+import { EnterpriseTotalsButton } from '../components/EnterpriseTotals'
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -186,6 +187,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
 export default function Invoices() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -193,6 +195,10 @@ export default function Invoices() {
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [clientPrompt, setClientPrompt] = useState(null)
+  const [monthDate, setMonthDate] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
@@ -202,8 +208,25 @@ export default function Invoices() {
 
   const { data: clients = [] } = useQuery({ queryKey: ['clients-list'], queryFn: fetchClients })
 
+  /* ── Vue mensuelle ── */
+  const monthLabel = useMemo(
+    () => new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
+      .format(monthDate).replace(/^./, (c) => c.toUpperCase()),
+    [monthDate],
+  )
+  const goToMonth = (offset) => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + offset, 1))
+
+  const monthInvoices = useMemo(
+    () => invoices.filter((inv) => {
+      if (!inv.createdAt) return false
+      const d = new Date(inv.createdAt)
+      return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth()
+    }),
+    [invoices, monthDate],
+  )
+
   const filtered = useMemo(() => {
-    return invoices.filter((inv) => {
+    return monthInvoices.filter((inv) => {
       if (typeFilter !== 'ALL' && (inv.documentType || 'FACTURE') !== typeFilter) return false
       if (statusFilter !== 'ALL' && inv.status !== statusFilter) return false
       if (search) {
@@ -213,13 +236,14 @@ export default function Invoices() {
       }
       return true
     })
-  }, [invoices, typeFilter, statusFilter, search])
+  }, [monthInvoices, typeFilter, statusFilter, search])
 
-  /* Totals */
-  const totalBilled   = invoices.reduce((s, i) => s + Number(i.total || 0), 0)
-  const totalPaid     = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.total || 0), 0)
-  const totalPending  = invoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.total || 0), 0)
-  const totalOverdue  = invoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.total || 0), 0)
+  /* Totaux du mois sélectionné */
+  const factureCount  = monthInvoices.filter(i => (i.documentType || 'FACTURE') === 'FACTURE').length
+  const totalBilled   = monthInvoices.filter(i => (i.documentType || 'FACTURE') === 'FACTURE').reduce((s, i) => s + Number(i.total || 0), 0)
+  const totalPaid     = monthInvoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.total || 0), 0)
+  const totalPending  = monthInvoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.total || 0), 0)
+  const totalOverdue  = monthInvoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.total || 0), 0)
 
   /* Mutations */
   const saveMutation = useMutation({
@@ -466,11 +490,28 @@ export default function Invoices() {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
+      {/* En-tête : sélecteur de mois + accès masqué aux totaux entreprise (admin) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button onClick={() => goToMonth(-1)} className={btnSecondary} aria-label="Mois précédent">
+            <ChevronLeft size={15} />
+          </button>
+          <p className="min-w-[150px] text-center text-sm font-semibold capitalize text-text-primary">{monthLabel}</p>
+          <button onClick={() => goToMonth(1)} className={btnSecondary} aria-label="Mois suivant">
+            <ChevronRight size={15} />
+          </button>
+          <span className="ml-1 text-xs text-text-muted">
+            {factureCount} facture{factureCount !== 1 ? 's' : ''} ce mois-ci
+          </span>
+        </div>
+        {isAdmin && <EnterpriseTotalsButton />}
+      </div>
+
+      {/* Stats du mois */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: 'Total facturé',   value: formatCurrency(totalBilled),  color: '#9d3bf1' },
-          { label: 'Payé',            value: formatCurrency(totalPaid),    color: '#10b981' },
+          { label: 'Facturé (mois)',  value: formatCurrency(totalBilled),  color: '#9d3bf1' },
+          { label: 'Payé (mois)',     value: formatCurrency(totalPaid),    color: '#10b981' },
           { label: 'En attente',      value: formatCurrency(totalPending), color: '#f59e0b' },
           { label: 'En retard',       value: formatCurrency(totalOverdue), color: '#ef4444' },
         ].map((s) => (
@@ -523,7 +564,7 @@ export default function Invoices() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <FileText size={40} className="text-text-muted/40" />
-            <p className="text-text-secondary">Aucun document.</p>
+            <p className="text-text-secondary">Aucun document pour {monthLabel}.</p>
             <button onClick={() => openCreateModal('FACTURE')} className={btnPrimary}><Plus size={15} /> Créer une facture</button>
           </div>
         ) : (
