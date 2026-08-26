@@ -103,7 +103,7 @@ const ChartTooltip = ({ active, payload, label }) => {
 export default function Finance() {
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [activeTab, setActiveTab] = useState('overview')
   const [txModalOpen, setTxModalOpen] = useState(false)
@@ -384,9 +384,11 @@ export default function Finance() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-text-primary">{monthTransactions.length} transaction{monthTransactions.length !== 1 ? 's' : ''} — {monthLabel}</h3>
-            <button onClick={openCreateTx} className={btnPrimary}>
-              <Plus size={15} /> Ajouter
-            </button>
+            {can('create', 'finance') && (
+              <button onClick={openCreateTx} className={btnPrimary}>
+                <Plus size={15} /> Ajouter
+              </button>
+            )}
           </div>
           {loadingTx ? (
             <p className="text-text-secondary">Chargement…</p>
@@ -411,8 +413,8 @@ export default function Finance() {
                       return (
                         <tr
                           key={tx.id}
-                          onClick={isAdmin ? () => openEditTx(tx) : undefined}
-                          className={`border-b border-c-border last:border-0 ${isAdmin ? 'cursor-pointer hover:bg-bg-hover/30 transition-colors' : ''}`}
+                          onClick={can('update', 'finance') ? () => openEditTx(tx) : undefined}
+                          className={`border-b border-c-border last:border-0 ${can('update', 'finance') ? 'cursor-pointer hover:bg-bg-hover/30 transition-colors' : ''}`}
                         >
                           <td className="p-4 text-text-muted text-xs whitespace-nowrap">
                             {tx.date ? new Date(tx.date).toLocaleDateString('fr-FR') : '—'}
@@ -498,7 +500,7 @@ export default function Finance() {
         title={editingTx ? 'Modifier la transaction' : 'Nouvelle transaction'}
         footer={
           <>
-            {isAdmin && editingTx && (
+            {can('delete', 'finance') && editingTx && (
               <button type="button" onClick={() => deleteTxMutation.mutate(editingTx.id)} disabled={deleteTxMutation.isPending} className={btnDanger}>
                 <Trash2 size={15} /> Supprimer
               </button>

@@ -76,6 +76,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
   const [expanded, setExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const { can } = useAuth()
   const s = INVOICE_STATUS[invoice.status] || { label: invoice.status, color: '#6e6a75' }
   const t = DOC_TYPE[invoice.documentType] || DOC_TYPE.FACTURE
   const docLabel = (DOC_TYPE[invoice.documentType] || DOC_TYPE.FACTURE).label
@@ -116,7 +117,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
         <td className="p-4"><Badge color={s.color}>{s.label}</Badge></td>
         <td className="p-4 text-right">
           <div className="flex items-center justify-end gap-2">
-            {canGenerateReceipt && (
+            {canGenerateReceipt && can('create', 'invoices') && (
               <button
                 onClick={(e) => { e.stopPropagation(); onGenerateReceipt(invoice) }}
                 title="Générer le reçu de paiement"
@@ -141,12 +142,14 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
             >
               <Download size={14} />
             </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(invoice) }}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-text-secondary border border-c-border hover:bg-bg-hover hover:text-text-primary transition-colors"
-            >
-              Modifier
-            </button>
+            {can('update', 'invoices') && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(invoice) }}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-text-secondary border border-c-border hover:bg-bg-hover hover:text-text-primary transition-colors"
+              >
+                Modifier
+              </button>
+            )}
           </div>
         </td>
       </tr>
@@ -186,7 +189,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
 
 export default function Invoices() {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -547,14 +550,16 @@ export default function Invoices() {
             ))}
           </select>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button onClick={() => openCreateModal('FACTURE')} className={`${btnPrimary} w-full sm:w-auto`}>
-            <Plus size={16} /> Nouvelle facture
-          </button>
-          <button onClick={() => openCreateModal('RECU')} className={`${btnSecondary} w-full sm:w-auto`}>
-            <Plus size={16} /> Nouveau reçu
-          </button>
-        </div>
+        {can('create', 'invoices') && (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button onClick={() => openCreateModal('FACTURE')} className={`${btnPrimary} w-full sm:w-auto`}>
+              <Plus size={16} /> Nouvelle facture
+            </button>
+            <button onClick={() => openCreateModal('RECU')} className={`${btnSecondary} w-full sm:w-auto`}>
+              <Plus size={16} /> Nouveau reçu
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -565,7 +570,9 @@ export default function Invoices() {
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <FileText size={40} className="text-text-muted/40" />
             <p className="text-text-secondary">Aucun document pour {monthLabel}.</p>
-            <button onClick={() => openCreateModal('FACTURE')} className={btnPrimary}><Plus size={15} /> Créer une facture</button>
+            {can('create', 'invoices') && (
+              <button onClick={() => openCreateModal('FACTURE')} className={btnPrimary}><Plus size={15} /> Créer une facture</button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -603,7 +610,7 @@ export default function Invoices() {
         maxWidth="max-w-6xl"
         footer={
           <>
-            {editingInvoice && (
+            {editingInvoice && can('delete', 'invoices') && (
               <button type="button" onClick={() => deleteMutation.mutate(editingInvoice.id)} disabled={deleteMutation.isPending} className={btnDanger}>
                 <Trash2 size={15} /> Supprimer
               </button>
