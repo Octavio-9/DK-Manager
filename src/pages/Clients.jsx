@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Search, Mail, Phone, MapPin, FolderKanban } from 'lucide-react'
+import { Plus, Trash2, Search, Mail, Phone, MapPin, FolderKanban, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { formatCurrency } from '../lib/format'
 import { useAlert } from '../context/AlertContext'
 import {
   CLIENT_TYPE_LABELS,
@@ -35,6 +36,25 @@ async function fetchClients() {
   return (data || []).map((c) => ({ ...c, projectCount: c.projectCount?.[0]?.count || 0 }))
 }
 
+// Montants par client, à partir des factures (les reçus sont exclus pour ne pas
+// compter deux fois un encaissement). Retourne une map clientId → { encaisse, reste }.
+//   encaisse = factures payées ; reste = factures en attente ou en retard.
+async function fetchClientInvoiceTotals() {
+  const { data, error } = await supabase
+    .from('Invoice')
+    .select('clientId, total, documentType, status')
+  if (error) throw error
+  const map = {}
+  for (const inv of data || []) {
+    if (!inv.clientId || (inv.documentType || 'FACTURE') !== 'FACTURE') continue
+    const entry = map[inv.clientId] || (map[inv.clientId] = { encaisse: 0, reste: 0 })
+    const amount = Number(inv.total || 0)
+    if (inv.status === 'PAID') entry.encaisse += amount
+    else if (inv.status === 'PENDING' || inv.status === 'OVERDUE') entry.reste += amount
+  }
+  return map
+}
+
 export default function Clients() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -50,6 +70,11 @@ export default function Clients() {
     queryKey: ['clients'],
     queryFn: fetchClients,
     onError: (err) => toast.error(err.message),
+  })
+
+  const { data: invoiceTotals = {} } = useQuery({
+    queryKey: ['client-invoice-totals'],
+    queryFn: fetchClientInvoiceTotals,
   })
 
   const filtered = useMemo(() => {
@@ -212,9 +237,25 @@ export default function Clients() {
                   </p>
                 )}
               </div>
-              <div className="mt-3 flex items-center gap-1.5 border-t border-c-border pt-3 text-xs text-text-muted">
-                <FolderKanban size={14} />
-                {client.projectCount} projet{client.projectCount > 1 ? 's' : ''}
+              <div className="mt-3 space-y-2 border-t border-c-border pt-3 text-xs">
+                <span className="flex items-center gap-1.5 text-text-muted">
+                  <FolderKanban size={14} />
+                  {client.projectCount} projet{client.projectCount > 1 ? 's' : ''}
+                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-text-muted">
+                    <Wallet size={14} /> Encaissé
+                  </span>
+                  <span className="font-semibold text-c-success">
+                    {formatCurrency(invoiceTotals[client.id]?.encaisse || 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-text-muted">Reste à payer</span>
+                  <span className="font-semibold" style={{ color: '#f59e0b' }}>
+                    {formatCurrency(invoiceTotals[client.id]?.reste || 0)}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
