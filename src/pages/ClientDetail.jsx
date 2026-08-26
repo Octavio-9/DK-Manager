@@ -7,6 +7,7 @@ import {
   FolderKanban, FileText, Users, Pencil, Info,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import { formatDate, formatCurrency } from '../lib/format'
 import {
   CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_STATUS_OPTIONS,
@@ -83,8 +84,11 @@ export default function ClientDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [activeTab, setActiveTab] = useState('info')
   const [editOpen, setEditOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [editingContact, setEditingContact] = useState(null)
   const [contactForm, setContactForm] = useState(EMPTY_CONTACT)
@@ -141,6 +145,27 @@ export default function ClientDetail() {
       queryClient.invalidateQueries({ queryKey: ['clients'] })
       toast.success('Client mis à jour')
       setEditOpen(false)
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  /* Delete client mutation (admin uniquement).
+     .select() renvoie les lignes réellement supprimées : si 0 ligne, c'est que la
+     suppression a été refusée en base (droits) — on lève une erreur au lieu d'un faux succès. */
+  const deleteClientMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.from('Client').delete().eq('id', id).select('id')
+      if (error) throw error
+      if (!data || data.length === 0) {
+        throw new Error('Suppression refusée : droits insuffisants ou client déjà supprimé.')
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] })
+      queryClient.invalidateQueries({ queryKey: ['clients-list'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success('Client supprimé')
+      navigate('/clients')
     },
     onError: (err) => toast.error(err.message),
   })
@@ -203,11 +228,50 @@ export default function ClientDetail() {
             </div>
           </div>
         </div>
-        <button onClick={openEdit} className={`${btnPrimary} w-full sm:w-auto`}>
-          <Pencil size={16} />
-          Modifier
-        </button>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <button onClick={openEdit} className={`${btnPrimary} flex-1 sm:flex-none`}>
+            <Pencil size={16} />
+            Modifier
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className={btnDanger}
+              title="Supprimer le client"
+            >
+              <Trash2 size={16} />
+              Supprimer
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Confirmation de suppression du client (admin) */}
+      <Modal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Supprimer ce client ?"
+        footer={
+          <>
+            <div className="flex-1" />
+            <button type="button" onClick={() => setConfirmDelete(false)} className={btnSecondary}>Annuler</button>
+            <button
+              type="button"
+              onClick={() => deleteClientMutation.mutate()}
+              disabled={deleteClientMutation.isPending}
+              className={btnDanger}
+            >
+              <Trash2 size={16} />
+              Supprimer définitivement
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          <span className="font-semibold text-text-primary">{client.name}</span> et ses contacts seront supprimés
+          définitivement. Les projets et factures liés seront conservés, mais ne seront plus rattachés à ce client.
+        </p>
+      </Modal>
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
