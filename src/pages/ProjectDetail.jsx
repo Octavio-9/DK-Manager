@@ -12,6 +12,7 @@ import { formatDate, formatCurrency } from '../lib/format'
 import {
   PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, PROJECT_STATUS_OPTIONS,
   TASK_STATUS_LABELS, TASK_STATUS_OPTIONS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_PRIORITY_OPTIONS,
+  TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_OPTIONS,
 } from '../lib/constants'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
@@ -75,6 +76,18 @@ async function fetchMembers() {
   return data || []
 }
 
+async function fetchEventTypes() {
+  const { data, error } = await supabase.from('EventType').select('*').order('name')
+  if (error) throw error
+  return data || []
+}
+
+async function fetchCategories() {
+  const { data, error } = await supabase.from('FinanceCategory').select('*').order('name')
+  if (error) throw error
+  return data || []
+}
+
 /* ── Constants ──────────────────────────────────────────────────── */
 
 const TABS = [
@@ -95,6 +108,16 @@ const PRODUCTION_STATUS = {
 
 const EMPTY_TASK = { title: '', description: '', assigneeId: '', priority: 'MEDIUM', status: 'TODO', dueDate: '' }
 const EMPTY_PRODUCTION = { title: '', type: 'Podcast', recordingDate: '', location: '', status: 'PLANNED' }
+const EMPTY_EVENT = { title: '', description: '', date: '', endDate: '', typeId: '' }
+const EMPTY_TXN = { type: 'INCOME', amount: '', categoryId: '', description: '', date: new Date().toISOString().slice(0, 10) }
+
+// Convertit une date ISO en valeur pour <input type="datetime-local">
+function toDatetimeLocal(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 /* ── Main Page ──────────────────────────────────────────────────── */
 
@@ -110,6 +133,11 @@ export default function ProjectDetail() {
   const [prodOpen, setProdOpen] = useState(false)
   const [editingProd, setEditingProd] = useState(null)
   const [prodForm, setProdForm] = useState(EMPTY_PRODUCTION)
+  const [eventOpen, setEventOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState(null)
+  const [eventForm, setEventForm] = useState(EMPTY_EVENT)
+  const [txOpen, setTxOpen] = useState(false)
+  const [txForm, setTxForm] = useState(EMPTY_TXN)
 
   /* Queries */
   const { data: project, isLoading } = useQuery({
@@ -123,6 +151,8 @@ export default function ProjectDetail() {
   const { data: events = [] } = useQuery({ queryKey: ['project-events', id], queryFn: () => fetchProjectEvents(id) })
   const { data: projectTransactions = [] } = useQuery({ queryKey: ['project-transactions', id], queryFn: () => fetchProjectTransactions(id) })
   const { data: members = [] } = useQuery({ queryKey: ['members-list'], queryFn: fetchMembers })
+  const { data: eventTypes = [] } = useQuery({ queryKey: ['event-types'], queryFn: fetchEventTypes })
+  const { data: categories = [] } = useQuery({ queryKey: ['finance-categories'], queryFn: fetchCategories })
 
   /* Task mutations */
   const saveTaskMutation = useMutation({
@@ -179,12 +209,84 @@ export default function ProjectDetail() {
     onError: (err) => toast.error(err.message),
   })
 
+  /* Event mutations */
+  const openCreateEvent = () => { setEditingEvent(null); setEventForm(EMPTY_EVENT); setEventOpen(true) }
+  const openEditEvent = (ev) => {
+    setEditingEvent(ev)
+    setEventForm({
+      title: ev.title || '',
+      description: ev.description || '',
+      date: toDatetimeLocal(ev.date),
+      endDate: toDatetimeLocal(ev.endDate),
+      typeId: ev.typeId || '',
+    })
+    setEventOpen(true)
+  }
+  const closeEvent = () => { setEventOpen(false); setEditingEvent(null); setEventForm(EMPTY_EVENT) }
+
+  const saveEventMutation = useMutation({
+    mutationFn: async (payload) => {
+      if (editingEvent) {
+        const { error } = await supabase.from('Event').update(payload).eq('id', editingEvent.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('Event').insert({ ...payload, projectId: id })
+        if (error) throw error
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-events', id] })
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success(editingEvent ? 'Événement mis à jour' : 'Événement créé')
+      closeEvent()
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  const deleteEventMutation = useMutation({
+    mutationFn: async (eventId) => {
+      const { error } = await supabase.from('Event').delete().eq('id', eventId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-events', id] })
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success('Événement supprimé')
+      closeEvent()
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  /* Transaction mutation — création rattachée au projet */
+  const openCreateTx = () => { setTxForm({ ...EMPTY_TXN, date: new Date().toISOString().slice(0, 10) }); setTxOpen(true) }
+  const closeTx = () => { setTxOpen(false); setTxForm(EMPTY_TXN) }
+  const saveTxMutation = useMutation({
+    mutationFn: async (payload) => {
+      const { error } = await supabase.from('Transaction').insert({ ...payload, projectId: id })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-transactions', id] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      toast.success('Transaction ajoutée')
+      closeTx()
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
   if (isLoading) return <p className="text-text-secondary">Chargement…</p>
   if (!project) return <p className="text-text-secondary">Projet introuvable.</p>
 
   // Encaissé = somme des transactions de type « Revenu » rattachées à ce projet
   const encaisse = projectTransactions
     .filter((t) => t.type === 'INCOME')
+    .reduce((s, t) => s + Number(t.amount || 0), 0)
+
+  // Dépenses liées = somme des transactions de type « Dépense » rattachées à ce projet
+  const depenses = projectTransactions
+    .filter((t) => t.type === 'EXPENSE')
     .reduce((s, t) => s + Number(t.amount || 0), 0)
 
   const progress = project.budget > 0
@@ -359,14 +461,24 @@ export default function ProjectDetail() {
       {/* Tab: Finance */}
       {activeTab === 'finance' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-text-primary">Finances du projet</h3>
+            <button onClick={openCreateTx} className={btnPrimary}>
+              <Plus size={15} /> Ajouter une transaction
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div className="rounded-xl border border-c-border bg-bg-card p-4">
               <p className="text-xs text-text-muted">Budget total</p>
               <p className="mt-1 text-lg font-bold text-accent-purple">{formatCurrency(project.budget)}</p>
             </div>
             <div className="rounded-xl border border-c-border bg-bg-card p-4">
-              <p className="text-xs text-text-muted">Montant encaissé</p>
+              <p className="text-xs text-text-muted">Encaissé (revenus liés)</p>
               <p className="mt-1 text-lg font-bold text-c-success">{formatCurrency(encaisse)}</p>
+            </div>
+            <div className="rounded-xl border border-c-border bg-bg-card p-4">
+              <p className="text-xs text-text-muted">Dépenses liées</p>
+              <p className="mt-1 text-lg font-bold text-c-danger">{formatCurrency(depenses)}</p>
             </div>
             <div className="rounded-xl border border-c-border bg-bg-card p-4">
               <p className="text-xs text-text-muted">Solde restant</p>
@@ -389,13 +501,20 @@ export default function ProjectDetail() {
       {/* Tab: Calendar */}
       {activeTab === 'calendar' && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-text-primary">{events.length} événement{events.length !== 1 ? 's' : ''}</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-text-primary">{events.length} événement{events.length !== 1 ? 's' : ''}</h3>
+            <button onClick={openCreateEvent} className={btnPrimary}>
+              <Plus size={15} /> Ajouter un événement
+            </button>
+          </div>
           {events.length === 0 ? (
             <p className="text-sm text-text-muted">Aucun événement lié.</p>
           ) : (
             <div className="space-y-2">
               {events.map((e) => (
-                <div key={e.id} className="flex items-start gap-3 rounded-xl border border-c-border bg-bg-card p-4">
+                <div key={e.id}
+                  onClick={() => openEditEvent(e)}
+                  className="flex items-start gap-3 rounded-xl border border-c-border bg-bg-card p-4 cursor-pointer hover:border-accent-purple/40">
                   <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: e.typeRel?.color || '#22d3ee' }} />
                   <div>
                     <p className="text-sm font-medium text-text-primary">{e.title}</p>
@@ -503,6 +622,92 @@ export default function ProjectDetail() {
             <div><label className={labelClass}>Date d&apos;enregistrement</label><input type="date" className={inputClass} value={prodForm.recordingDate} onChange={e => setProdForm(f => ({ ...f, recordingDate: e.target.value }))} /></div>
             <div><label className={labelClass}>Lieu</label><input className={inputClass} value={prodForm.location} onChange={e => setProdForm(f => ({ ...f, location: e.target.value }))} /></div>
           </div>
+        </form>
+      </Modal>
+
+      {/* Event Modal */}
+      <Modal open={eventOpen} onClose={closeEvent}
+        title={editingEvent ? "Modifier l'événement" : 'Nouvel événement'}
+        footer={
+          <>
+            {editingEvent && (
+              <button type="button" onClick={() => deleteEventMutation.mutate(editingEvent.id)} disabled={deleteEventMutation.isPending} className={btnDanger}>
+                <Trash2 size={15} /> Supprimer
+              </button>
+            )}
+            <div className="flex-1" />
+            <button type="button" onClick={closeEvent} className={btnSecondary}>Annuler</button>
+            <button type="submit" form="event-form-detail" disabled={saveEventMutation.isPending} className={btnPrimary}>Enregistrer</button>
+          </>
+        }
+      >
+        <form id="event-form-detail" onSubmit={(e) => {
+          e.preventDefault()
+          if (!eventForm.title.trim() || !eventForm.date) { showAlert('Le titre et la date de début sont requis'); return }
+          saveEventMutation.mutate({
+            title: eventForm.title.trim(),
+            description: eventForm.description.trim() || null,
+            date: new Date(eventForm.date).toISOString(),
+            endDate: eventForm.endDate ? new Date(eventForm.endDate).toISOString() : null,
+            typeId: eventForm.typeId || null,
+          })
+        }} className="space-y-4">
+          <div><label className={labelClass}>Titre *</label><input required className={inputClass} value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div><label className={labelClass}>Description</label><textarea rows={3} className={inputClass} value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))} /></div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div><label className={labelClass}>Début *</label><input type="datetime-local" className={inputClass} value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))} /></div>
+            <div><label className={labelClass}>Fin (optionnel)</label><input type="datetime-local" className={inputClass} value={eventForm.endDate} onChange={e => setEventForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+          </div>
+          <div>
+            <label className={labelClass}>Type d&apos;événement</label>
+            <select className={inputClass} value={eventForm.typeId} onChange={e => setEventForm(f => ({ ...f, typeId: e.target.value }))}>
+              <option value="">Aucun</option>
+              {eventTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Transaction Modal — création rattachée au projet */}
+      <Modal open={txOpen} onClose={closeTx}
+        title="Nouvelle transaction"
+        footer={
+          <>
+            <div className="flex-1" />
+            <button type="button" onClick={closeTx} className={btnSecondary}>Annuler</button>
+            <button type="submit" form="tx-form-detail" disabled={saveTxMutation.isPending} className={btnPrimary}>Enregistrer</button>
+          </>
+        }
+      >
+        <form id="tx-form-detail" onSubmit={(e) => {
+          e.preventDefault()
+          if (!txForm.amount || isNaN(Number(txForm.amount))) { showAlert('Montant invalide'); return }
+          saveTxMutation.mutate({
+            type: txForm.type,
+            amount: Number(txForm.amount),
+            categoryId: txForm.categoryId || null,
+            description: txForm.description || null,
+            date: txForm.date || null,
+          })
+        }} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Type</label>
+              <select className={inputClass} value={txForm.type} onChange={e => setTxForm(f => ({ ...f, type: e.target.value }))}>
+                {TRANSACTION_TYPE_OPTIONS.map(t => <option key={t} value={t}>{TRANSACTION_TYPE_LABELS[t]}</option>)}
+              </select>
+            </div>
+            <div><label className={labelClass}>Montant (GNF) *</label><input type="number" min="0" step="1" required className={inputClass} value={txForm.amount} onChange={e => setTxForm(f => ({ ...f, amount: e.target.value }))} /></div>
+            <div><label className={labelClass}>Date</label><input type="date" className={inputClass} value={txForm.date} onChange={e => setTxForm(f => ({ ...f, date: e.target.value }))} /></div>
+            <div>
+              <label className={labelClass}>Catégorie</label>
+              <select className={inputClass} value={txForm.categoryId} onChange={e => setTxForm(f => ({ ...f, categoryId: e.target.value }))}>
+                <option value="">— Aucune —</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div><label className={labelClass}>Description</label><input className={inputClass} value={txForm.description} onChange={e => setTxForm(f => ({ ...f, description: e.target.value }))} /></div>
         </form>
       </Modal>
     </div>
