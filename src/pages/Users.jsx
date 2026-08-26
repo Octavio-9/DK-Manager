@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useAlert } from '../context/AlertContext'
 import { formatDate } from '../lib/format'
-import { ROLE_LABELS, ROLE_COLORS } from '../lib/constants'
+import { ROLE_COLORS } from '../lib/constants'
 import Avatar from '../components/ui/Avatar'
-import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
+import PermissionsModal from '../components/PermissionsModal'
 import { inputClass, labelClass, btnPrimary, btnSecondary } from '../lib/ui'
 
 const EMPTY_FORM = {
@@ -40,6 +40,7 @@ export default function Users() {
   const { showAlert } = useAlert()
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [permUser, setPermUser] = useState(null)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -183,15 +184,28 @@ export default function Users() {
                       </select>
                     </td>
                     <td className="p-4 text-text-secondary">{formatDate(member.createdAt)}</td>
-                    <td className="p-4 text-right">
-                      <button
-                        onClick={() => handleDelete(member)}
-                        disabled={member.id === currentUser.id || deleteMutation.isPending}
-                        title={member.id === currentUser.id ? 'Impossible de supprimer son propre compte' : 'Supprimer'}
-                        className="rounded-lg p-2 text-text-muted transition-colors hover:bg-bg-hover hover:text-c-danger disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <td className="p-4">
+                      <div className="flex items-center justify-end gap-1">
+                        {(member.roleRel?.name || member.role) !== 'Administrateur' && (
+                          <button
+                            type="button"
+                            onClick={() => setPermUser(member)}
+                            title="Gérer les droits"
+                            aria-label="Gérer les droits"
+                            className="rounded-lg p-2 text-text-muted transition-colors hover:bg-bg-hover hover:text-accent-purple"
+                          >
+                            <ShieldCheck size={16} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(member)}
+                          disabled={member.id === currentUser.id || deleteMutation.isPending}
+                          title={member.id === currentUser.id ? 'Impossible de supprimer son propre compte' : 'Supprimer'}
+                          className="rounded-lg p-2 text-text-muted transition-colors hover:bg-bg-hover hover:text-c-danger disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -261,6 +275,8 @@ export default function Users() {
           </div>
         </form>
       </Modal>
+
+      {permUser && <PermissionsModal user={permUser} onClose={() => setPermUser(null)} />}
     </div>
   )
 }
