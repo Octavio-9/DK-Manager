@@ -5,6 +5,7 @@ import {
   Plus, Trash2, ChevronLeft, ChevronRight, Film,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
 import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../lib/ui'
@@ -168,6 +169,7 @@ function PostCard({ post, onClick }) {
 
 export default function EditorialCalendar() {
   const queryClient = useQueryClient()
+  const { can } = useAuth()
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()))
   const [platformFilter, setPlatformFilter] = useState('ALL')
   const [modalOpen, setModalOpen] = useState(false)
@@ -263,9 +265,11 @@ export default function EditorialCalendar() {
           <h2 className="text-lg font-bold text-text-primary">Calendrier Éditorial</h2>
           <p className="text-xs text-text-muted mt-0.5">Planification des publications réseaux sociaux</p>
         </div>
-        <button onClick={() => openCreate(null)} className={`${btnPrimary} shrink-0`}>
-          <Plus size={15} /> Nouveau post
-        </button>
+        {can('create', 'editorial') && (
+          <button onClick={() => openCreate(null)} className={`${btnPrimary} shrink-0`}>
+            <Plus size={15} /> Nouveau post
+          </button>
+        )}
       </div>
 
       {/* Platform KPIs */}
@@ -356,14 +360,16 @@ export default function EditorialCalendar() {
                   className="border-r border-c-border last:border-r-0 min-h-[160px] p-2 space-y-1.5"
                 >
                   {dayPosts.map(post => (
-                    <PostCard key={post.id} post={post} onClick={() => openEdit(post)} />
+                    <PostCard key={post.id} post={post} onClick={can('update', 'editorial') ? () => openEdit(post) : undefined} />
                   ))}
-                  <button
-                    onClick={() => openCreate(day)}
-                    className="w-full rounded-lg border border-dashed border-c-border py-1.5 text-[10px] text-text-muted opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-text-primary"
-                  >
-                    + Ajouter
-                  </button>
+                  {can('create', 'editorial') && (
+                    <button
+                      onClick={() => openCreate(day)}
+                      className="w-full rounded-lg border border-dashed border-c-border py-1.5 text-[10px] text-text-muted opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-text-primary"
+                    >
+                      + Ajouter
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -397,8 +403,8 @@ export default function EditorialCalendar() {
                       const Icon = meta.icon || Film
                       const status = POST_STATUSES[post.status] || POST_STATUSES.DRAFT
                       return (
-                        <tr key={post.id} onClick={() => openEdit(post)}
-                          className="cursor-pointer border-b border-c-border last:border-0 hover:bg-bg-hover/30 transition-colors">
+                        <tr key={post.id} onClick={can('update', 'editorial') ? () => openEdit(post) : undefined}
+                          className={`border-b border-c-border last:border-0 ${can('update', 'editorial') ? 'cursor-pointer hover:bg-bg-hover/30 transition-colors' : ''}`}>
                           <td className="p-4 text-text-muted text-xs whitespace-nowrap">
                             {post.scheduledAt
                               ? new Date(post.scheduledAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -436,7 +442,7 @@ export default function EditorialCalendar() {
         maxWidth="max-w-2xl"
         footer={
           <>
-            {editingPost && (
+            {editingPost && can('delete', 'editorial') && (
               <button type="button" onClick={() => deleteMutation.mutate(editingPost.id)} disabled={deleteMutation.isPending} className={btnDanger}>
                 <Trash2 size={15} /> Supprimer
               </button>

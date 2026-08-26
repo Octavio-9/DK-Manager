@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  Plus, Trash2, FolderOpen, Search, Download, Upload, Tag, Eye, Lock,
+  Plus, Trash2, FolderOpen, Search, Upload, Tag, Eye, Lock,
   FileText, FileImage, FileSpreadsheet, FileArchive, FileVideo, FileAudio, Presentation, File as FileIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Avatar from '../components/ui/Avatar'
@@ -98,6 +99,7 @@ function getFileIconInfo(url) {
 export default function Documents() {
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
+  const { can } = useAuth()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [modalOpen, setModalOpen] = useState(false)
@@ -265,9 +267,11 @@ export default function Documents() {
             {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
-        <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
-          <Plus size={16} /> Ajouter un document
-        </button>
+        {can('create', 'documents') && (
+          <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
+            <Plus size={16} /> Ajouter un document
+          </button>
+        )}
       </div>
 
       {/* Grid */}
@@ -277,7 +281,9 @@ export default function Documents() {
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <FolderOpen size={40} className="text-text-muted/40" />
           <p className="text-text-secondary">Aucun document.</p>
-          <button onClick={openCreateModal} className={btnPrimary}><Plus size={15} /> Ajouter</button>
+          {can('create', 'documents') && (
+            <button onClick={openCreateModal} className={btnPrimary}><Plus size={15} /> Ajouter</button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -362,7 +368,7 @@ export default function Documents() {
             <button type="button" onClick={closeModal} className={btnSecondary}>Fermer</button>
           ) : (
             <>
-              {editingDoc && (
+              {editingDoc && can('delete', 'documents') && (
                 <button type="button" onClick={() => deleteMutation.mutate(editingDoc.id)} disabled={deleteMutation.isPending} className={btnDanger}>
                   <Trash2 size={15} /> Supprimer
                 </button>
