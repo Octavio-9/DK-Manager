@@ -62,7 +62,7 @@ export default function Projects() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [clientFilter, setClientFilter] = useState('ALL')
@@ -209,10 +209,12 @@ export default function Projects() {
             ))}
           </select>
         </div>
-        <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
-          <Plus size={16} />
-          Nouveau projet
-        </button>
+        {can('create', 'projects') && (
+          <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
+            <Plus size={16} />
+            Nouveau projet
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -267,15 +269,17 @@ export default function Projects() {
                   <span className="flex items-center gap-1">
                     <Calendar size={12} /> {formatDate(project.deadline)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); openEditModal(project) }}
-                    className="rounded-lg p-1 text-text-muted transition-colors hover:bg-bg-hover hover:text-accent-purple"
-                    title="Modifier le projet"
-                    aria-label="Modifier le projet"
-                  >
-                    <Pencil size={14} />
-                  </button>
+                  {can('update', 'projects') && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); openEditModal(project) }}
+                      className="rounded-lg p-1 text-text-muted transition-colors hover:bg-bg-hover hover:text-accent-purple"
+                      title="Modifier le projet"
+                      aria-label="Modifier le projet"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -290,7 +294,7 @@ export default function Projects() {
         maxWidth="max-w-2xl"
         footer={
           <>
-            {editingProject && (
+            {editingProject && can('delete', 'projects') && (
               <button
                 type="button"
                 onClick={() => deleteMutation.mutate(editingProject.id)}

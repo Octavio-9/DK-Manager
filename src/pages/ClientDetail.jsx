@@ -84,8 +84,7 @@ export default function ClientDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { user } = useAuth()
-  const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
+  const { can } = useAuth()
   const [activeTab, setActiveTab] = useState('info')
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -229,11 +228,13 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
-          <button onClick={openEdit} className={`${btnPrimary} flex-1 sm:flex-none`}>
-            <Pencil size={16} />
-            Modifier
-          </button>
-          {isAdmin && (
+          {can('update', 'clients') && (
+            <button onClick={openEdit} className={`${btnPrimary} flex-1 sm:flex-none`}>
+              <Pencil size={16} />
+              Modifier
+            </button>
+          )}
+          {can('delete', 'clients') && (
             <button
               onClick={() => setConfirmDelete(true)}
               className={btnDanger}

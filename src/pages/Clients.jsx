@@ -6,6 +6,7 @@ import { Plus, Trash2, Search, Mail, Phone, MapPin, FolderKanban, Wallet } from 
 import { supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/format'
 import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
 import {
   CLIENT_TYPE_LABELS,
   CLIENT_TYPE_OPTIONS,
@@ -59,6 +60,8 @@ export default function Clients() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
+  const { user, can } = useAuth()
+  const canSeeAmounts = ['Administrateur', 'Manager'].includes(user?.roleRel?.name || user?.role)
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
@@ -75,6 +78,7 @@ export default function Clients() {
   const { data: invoiceTotals = {} } = useQuery({
     queryKey: ['client-invoice-totals'],
     queryFn: fetchClientInvoiceTotals,
+    enabled: canSeeAmounts,
   })
 
   const filtered = useMemo(() => {
@@ -195,10 +199,12 @@ export default function Clients() {
             ))}
           </select>
         </div>
-        <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
-          <Plus size={16} />
-          Nouveau client
-        </button>
+        {can('create', 'clients') && (
+          <button onClick={openCreateModal} className={`${btnPrimary} w-full sm:w-auto`}>
+            <Plus size={16} />
+            Nouveau client
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -242,20 +248,24 @@ export default function Clients() {
                   <FolderKanban size={14} />
                   {client.projectCount} projet{client.projectCount > 1 ? 's' : ''}
                 </span>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-text-muted">
-                    <Wallet size={14} /> Encaissé
-                  </span>
-                  <span className="font-semibold text-c-success">
-                    {formatCurrency(invoiceTotals[client.id]?.encaisse || 0)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-text-muted">Reste à payer</span>
-                  <span className="font-semibold" style={{ color: '#f59e0b' }}>
-                    {formatCurrency(invoiceTotals[client.id]?.reste || 0)}
-                  </span>
-                </div>
+                {canSeeAmounts && (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-text-muted">
+                        <Wallet size={14} /> Encaissé
+                      </span>
+                      <span className="font-semibold text-c-success">
+                        {formatCurrency(invoiceTotals[client.id]?.encaisse || 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-text-muted">Reste à payer</span>
+                      <span className="font-semibold" style={{ color: '#f59e0b' }}>
+                        {formatCurrency(invoiceTotals[client.id]?.reste || 0)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -268,7 +278,7 @@ export default function Clients() {
         title={editingClient ? 'Modifier le client' : 'Nouveau client'}
         footer={
           <>
-            {editingClient && (
+            {editingClient && can('delete', 'clients') && (
               <button
                 type="button"
                 onClick={() => deleteMutation.mutate(editingClient.id)}
