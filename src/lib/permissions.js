@@ -22,9 +22,15 @@ export const PERMISSION_PAGES = [
 
 export const CRUD_ACTIONS = ['create', 'update', 'delete']
 
-// Actions déjà réservées à l'admin dans le code actuel (à ne pas desserrer).
-export const ADMIN_ONLY_DEFAULT = {
-  finance: ['update', 'delete'],
+const ADMIN = ['Administrateur']
+const MANAGERS = ['Administrateur', 'Manager']
+
+// Rôles autorisés par défaut pour une action CRUD, quand c'est PLUS restrictif
+// que la simple visibilité de la page (reflète le comportement actuel du code).
+// Une action absente ici suit la visibilité de la page (visible ⇒ autorisé).
+export const CRUD_DEFAULT_ROLES = {
+  finance: { update: ADMIN, delete: ADMIN }, // édition/suppression de transaction = admin
+  tasks: { create: MANAGERS, update: MANAGERS, delete: MANAGERS }, // gestion des tâches = managers
 }
 
 export function isAdminRole(roleName) {
@@ -38,7 +44,8 @@ export function defaultView(roleName, page) {
 }
 
 export function defaultCan(roleName, page, action) {
-  if (ADMIN_ONLY_DEFAULT[page]?.includes(action)) return false // non-admin par défaut
+  const rule = CRUD_DEFAULT_ROLES[page]?.[action]
+  if (rule) return rule.includes(roleName)
   return defaultView(roleName, page)
 }
 

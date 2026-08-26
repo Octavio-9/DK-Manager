@@ -75,7 +75,7 @@ async function fetchProjects() {
 export default function CalendarPage() {
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const isAdmin = (user?.roleRel?.name || user?.role) === 'Administrateur'
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date()
@@ -211,10 +211,12 @@ export default function CalendarPage() {
             <ChevronRight size={18} />
           </button>
         </div>
-        <button onClick={() => openCreateForm(new Date())} className={`${btnPrimary} w-full sm:w-auto`}>
-          <Plus size={16} />
-          Nouvel événement
-        </button>
+        {can('create', 'calendar') && (
+          <button onClick={() => openCreateForm(new Date())} className={`${btnPrimary} w-full sm:w-auto`}>
+            <Plus size={16} />
+            Nouvel événement
+          </button>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-xl border border-c-border bg-bg-card">
@@ -234,7 +236,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={key}
-                onClick={() => day && openCreateForm(day)}
+                onClick={() => day && can('create', 'calendar') && openCreateForm(day)}
                 className={`min-h-16 border-b border-r border-c-border p-1 last:border-r-0 sm:min-h-28 sm:p-2 ${
                   day ? 'cursor-pointer hover:bg-bg-hover/50' : 'bg-bg-dark/30'
                 }`}
@@ -296,20 +298,24 @@ export default function CalendarPage() {
             </p>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() => deleteMutation.mutate(detailEvent.id)}
-                disabled={deleteMutation.isPending}
-                className={btnDanger}
-              >
-                <Trash2 size={16} />
-                Supprimer
-              </button>
+              {can('delete', 'calendar') && (
+                <button
+                  type="button"
+                  onClick={() => deleteMutation.mutate(detailEvent.id)}
+                  disabled={deleteMutation.isPending}
+                  className={btnDanger}
+                >
+                  <Trash2 size={16} />
+                  Supprimer
+                </button>
+              )}
               <div className="flex-1" />
-              <button type="button" onClick={() => openEditForm(detailEvent)} className={btnPrimary}>
-                <Pencil size={16} />
-                Modifier
-              </button>
+              {can('update', 'calendar') && (
+                <button type="button" onClick={() => openEditForm(detailEvent)} className={btnPrimary}>
+                  <Pencil size={16} />
+                  Modifier
+                </button>
+              )}
             </>
           ))
         }

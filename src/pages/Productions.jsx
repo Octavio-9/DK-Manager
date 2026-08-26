@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
@@ -63,14 +64,16 @@ function generateToken() {
 /* ── Production Card ─────────────────────────────────────────────── */
 
 function ProductionCard({ prod, onEdit, onCopyValidationLink }) {
+  const { can } = useAuth()
+  const canUpdate = can('update', 'productions')
   const st = PRODUCTION_STATUS[prod.status] || { label: prod.status, color: '#6e6a75' }
   const vs = VALIDATION_STATUS[prod.validationStatus] || null
   const ValidIcon = vs?.Icon
 
   return (
     <div
-      onClick={() => onEdit(prod)}
-      className="cursor-pointer rounded-xl border border-c-border bg-bg-card p-4 transition-colors hover:border-accent-purple/50"
+      onClick={() => canUpdate && onEdit(prod)}
+      className={`rounded-xl border border-c-border bg-bg-card p-4 transition-colors ${canUpdate ? 'cursor-pointer hover:border-accent-purple/50' : ''}`}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -105,14 +108,14 @@ function ProductionCard({ prod, onEdit, onCopyValidationLink }) {
             >
               <Copy size={11} /> Copier lien
             </button>
-          ) : (
+          ) : canUpdate ? (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(prod, true) }}
               className="flex items-center gap-1 rounded-lg border border-dashed border-accent-purple/40 px-2 py-1 text-xs text-accent-purple hover:bg-accent-purple/10"
             >
               <Link2 size={11} /> Envoyer au client
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -124,6 +127,7 @@ function ProductionCard({ prod, onEdit, onCopyValidationLink }) {
 export default function Productions() {
   const queryClient = useQueryClient()
   const { showAlert } = useAlert()
+  const { can } = useAuth()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -297,9 +301,11 @@ export default function Productions() {
             {PRODUCTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
-        <button onClick={openCreate} className={`${btnPrimary} w-full sm:w-auto shrink-0`}>
-          <Plus size={15} /> Nouvelle production
-        </button>
+        {can('create', 'productions') && (
+          <button onClick={openCreate} className={`${btnPrimary} w-full sm:w-auto shrink-0`}>
+            <Plus size={15} /> Nouvelle production
+          </button>
+        )}
       </div>
 
       {/* Grid */}
@@ -309,7 +315,9 @@ export default function Productions() {
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Film size={40} className="text-text-muted/40" />
           <p className="text-text-secondary">Aucune production.</p>
-          <button onClick={openCreate} className={btnPrimary}><Plus size={15} /> Créer</button>
+          {can('create', 'productions') && (
+            <button onClick={openCreate} className={btnPrimary}><Plus size={15} /> Créer</button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -332,7 +340,7 @@ export default function Productions() {
         maxWidth="max-w-2xl"
         footer={
           <>
-            {editingProd && (
+            {editingProd && can('delete', 'productions') && (
               <button type="button" onClick={() => deleteMutation.mutate(editingProd.id)} disabled={deleteMutation.isPending} className={btnDanger}>
                 <Trash2 size={15} /> Supprimer
               </button>

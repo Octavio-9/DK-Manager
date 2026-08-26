@@ -61,10 +61,11 @@ async function fetchManagerIds() {
 
 export default function Tasks() {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const { showAlert } = useAlert()
-  const role = user?.roleRel?.name || user?.role
-  const isManager = role === 'Administrateur' || role === 'Manager'
+  const canCreateTask = can('create', 'tasks')
+  const canUpdateTask = can('update', 'tasks')
+  const canDeleteTask = can('delete', 'tasks')
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
@@ -80,8 +81,9 @@ export default function Tasks() {
   const { data: projects = [] } = useQuery({ queryKey: ['projects-list'], queryFn: fetchProjects })
   const { data: managerIds = [] } = useQuery({ queryKey: ['manager-ids'], queryFn: fetchManagerIds })
 
-  // Le modal est en lecture seule pour tout le monde sauf les managers/admins
-  const readOnly = !isManager
+  // Le formulaire est éditable selon le droit : création (nouvelle tâche) ou
+  // modification (tâche existante). Sinon, mode lecture seule (détails).
+  const readOnly = editingTask ? !canUpdateTask : !canCreateTask
 
   const columns = useMemo(() => {
     const map = {}
@@ -184,7 +186,7 @@ export default function Tasks() {
   })
 
   const openCreateModal = (status) => {
-    if (!isManager) return
+    if (!canCreateTask) return
     setEditingTask(null)
     setForm({ ...EMPTY_FORM, status: status || 'TODO' })
     setModalOpen(true)
@@ -212,7 +214,7 @@ export default function Tasks() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!isManager) return
+    if (editingTask ? !canUpdateTask : !canCreateTask) return
     if (!form.title.trim()) {
       showAlert('Le titre de la tâche est requis.')
       return
@@ -232,7 +234,7 @@ export default function Tasks() {
   }
 
   // Un utilisateur peut déplacer une tâche s'il est manager ou si la tâche lui est assignée
-  const canMove = (task) => isManager || task.assigneeId === user?.id
+  const canMove = (task) => canUpdateTask || task.assigneeId === user?.id
 
   const handleDrop = (e, status) => {
     e.preventDefault()
@@ -272,7 +274,7 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      {isManager && (
+      {canCreateTask && (
         <div className="flex items-center justify-end">
           <button onClick={() => openCreateModal()} className={`${btnPrimary} w-full sm:w-auto`}>
             <Plus size={16} />
@@ -371,7 +373,7 @@ export default function Tasks() {
               })}
             </div>
 
-            {isManager && (
+            {canCreateTask && (
               <button
                 onClick={() => openCreateModal(status)}
                 className="mt-2 flex items-center justify-center gap-1 rounded-lg border border-dashed border-c-border py-2 text-xs text-text-muted transition-colors hover:border-accent-purple hover:text-accent-purple"
@@ -416,7 +418,7 @@ export default function Tasks() {
             </>
           ) : (
             <>
-              {editingTask && (
+              {editingTask && canDeleteTask && (
                 <button
                   type="button"
                   onClick={() => deleteMutation.mutate(editingTask.id)}
