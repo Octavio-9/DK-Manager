@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
-import { ROUTE_ACCESS } from '../lib/constants'
+import { computeHasAccess, computeCan } from '../lib/permissions'
 
 
 const AuthContext = createContext(null)
@@ -174,12 +174,19 @@ export function AuthProvider({ children }) {
     setSession(null)
   }
 
-  const hasAccess = (route) => {
+  // Visibilité d'une page : surcharges par utilisateur (User.permissions) puis rôle.
+  const hasAccess = (page) => {
     if (!user) return false
     const roleName = user.roleRel?.name || user.role
-    const allowed = ROUTE_ACCESS[route]
-    if (!allowed) return true // unknown routes are not restricted
-    return allowed.includes(roleName)
+    return computeHasAccess(roleName, user.permissions, page)
+  }
+
+  // Droit CRUD sur une page : refusé seulement si une surcharge l'interdit
+  // (ou si la page n'est pas visible). L'admin n'est jamais restreint.
+  const can = (action, page) => {
+    if (!user) return false
+    const roleName = user.roleRel?.name || user.role
+    return computeCan(roleName, user.permissions, page, action)
   }
 
   const value = {
@@ -193,6 +200,7 @@ export function AuthProvider({ children }) {
     signInWithGoogle,
     signOut,
     hasAccess,
+    can,
     refreshUser: () => syncUser(session),
   }
 
