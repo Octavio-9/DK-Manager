@@ -29,7 +29,7 @@ function FullScreenLoader() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-dark">
       <div className="flex flex-col items-center gap-3">
-        <img src="/dk-mark-white.png" alt="DK Production" className="h-12 w-auto" />
+        <img src="/dk-mark-badge.png" alt="DK Production" className="h-12 w-auto" />
         <Loader2 size={24} className="animate-spin text-accent-purple" />
       </div>
     </div>

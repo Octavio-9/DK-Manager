@@ -3,18 +3,20 @@ import { useState } from 'react'
 // Logo DK Production.
 //   variant="dark"  → logo noir sur fond blanc (/DK.jpeg), pour les surfaces
 //                     claires : aperçu de facture, PDF, impression.
-//   variant="light" → logo blanc sur fond transparent (/dk-logo-white.png),
-//                     pour les surfaces sombres de l'application.
+//   variant="light" → logo noir sur pastille blanche (/dk-logo-badge.png), pour
+//                     les surfaces sombres de l'application. On garde le noir et
+//                     blanc de la marque, comme sur le favicon, plutôt que de
+//                     l'aplatir en une silhouette blanche.
 // Les deux fichiers sont générés depuis le logo source par
 // `node generate-pwa-icons.cjs`. En cas d'image absente, repli sur un SVG.
 const SOURCES = {
   dark: '/DK.jpeg',
-  light: '/dk-logo-white.png',
+  light: '/dk-logo-badge.png',
 }
 
 export default function DKLogo({ className = 'h-12 w-auto', variant = 'dark' }) {
   const [failed, setFailed] = useState(false)
-  const ink = variant === 'light' ? '#ffffff' : '#111111'
+  const ink = '#111111'
 
   if (!failed) {
     return (
@@ -36,6 +38,7 @@ export default function DKLogo({ className = 'h-12 w-auto', variant = 'dark' }) 
       role="img"
       aria-label="DK Production"
     >
+      {variant === 'light' && <rect width="260" height="150" rx="14" fill="#ffffff" />}
       <circle cx="70" cy="42" r="26" fill={ink} />
       <circle cx="34" cy="52" r="18" fill={ink} />
       <rect x="18" y="62" width="72" height="60" rx="8" fill={ink} />

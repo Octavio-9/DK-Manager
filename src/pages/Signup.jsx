@@ -70,7 +70,7 @@ export default function Signup() {
 
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <img src="/dk-mark-white.png" alt="DK Production" className="mb-3 h-14 w-auto" />
+          <img src="/dk-mark-badge.png" alt="DK Production" className="mb-3 h-14 w-auto" />
           <h1 className="text-2xl font-bold text-text-primary">DK Production</h1>
           <p className="text-sm text-text-secondary">Production Manager</p>
         </div>

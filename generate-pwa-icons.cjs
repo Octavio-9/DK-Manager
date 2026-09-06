@@ -8,8 +8,10 @@
  * l'icône : sa diagonale reste dans la zone de sécurité des icônes
  * « maskable » (cercle central de 80 %).
  *
- * Variantes blanches sur fond transparent : pour les surfaces sombres de l'app
- * (sidebar, login, tableau d'objectifs) où le logo noir serait invisible.
+ * Pastilles (dk-mark-badge, dk-logo-badge) : logo noir sur fond blanc arrondi,
+ * transparent autour. C'est le rendu du favicon, décliné pour les surfaces
+ * sombres de l'app (sidebar, login, tableau d'objectifs) : la marque y garde
+ * son noir et blanc au lieu d'être aplatie en silhouette blanche.
  *
  * Usage : node generate-pwa-icons.cjs
  */
@@ -68,22 +70,29 @@ async function renderIcon(mark, size) {
     .toBuffer()
 }
 
-// Transforme un visuel noir-sur-blanc en visuel blanc sur fond transparent :
-// l'alpha est dérivé de la luminosité (le tracé noir devient opaque, le fond
-// blanc devient transparent).
-async function toWhiteTransparent(input) {
-  const { width, height } = await sharp(input).metadata()
-  // negate : tracé noir -> 255 (opaque), fond blanc -> 0 (transparent).
-  // linear : écrase le bruit JPEG du fond en gardant l'antialiasing des bords.
-  const k = 255 / (255 - 12)
-  const alpha = await sharp(input)
-    .greyscale()
-    .negate()
-    .linear(k, -12 * k)
-    .raw()
+// Pastille à coins arrondis : visuel noir sur fond blanc, transparent autour.
+// C'est le rendu du favicon, décliné pour les surfaces sombres de l'app afin
+// que le logo y garde son noir et blanc au lieu d'être aplati en blanc.
+async function renderBadge(input, { pad = 0.11, radius = 0.18 } = {}) {
+  const m = await sharp(input).metadata()
+  const padX = Math.round(m.width * pad)
+  const padY = Math.round(m.height * pad)
+  const width = m.width + padX * 2
+  const height = m.height + padY * 2
+  const r = Math.round(Math.min(width, height) * radius)
+
+  const tile = await sharp({ create: { width, height, channels: 3, background: WHITE } })
+    .composite([{ input, top: padY, left: padX }])
+    .png()
     .toBuffer()
-  return sharp({ create: { width, height, channels: 3, background: WHITE } })
-    .joinChannel(alpha, { raw: { width, height, channels: 1 } })
+
+  const mask = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+      `<rect width="${width}" height="${height}" rx="${r}" ry="${r}" fill="#fff"/></svg>`
+  )
+  return sharp(tile)
+    .ensureAlpha()
+    .composite([{ input: mask, blend: 'dest-in' }])
     .png({ compressionLevel: 9, palette: true })
     .toBuffer()
 }
@@ -108,14 +117,18 @@ async function generate() {
 `)
   console.log('✓ favicon.svg')
 
-  // Variantes blanches pour les fonds sombres de l'application.
+  // Pastilles noir sur blanc pour les fonds sombres de l'application : sidebar,
+  // écrans de connexion, écran de chargement, tableau d'objectifs.
   // Affichées entre 32 et 56 px de haut : ces largeurs couvrent large (>3x).
-  const logoWhite = await sharp(lockup).resize({ width: 640 }).toBuffer()
-  fs.writeFileSync(path.join(PUBLIC, 'dk-logo-white.png'), await toWhiteTransparent(logoWhite))
-  console.log('✓ dk-logo-white.png (logo complet, blanc/transparent)')
-  const markWhite = await sharp(mark).resize({ width: 480 }).toBuffer()
-  fs.writeFileSync(path.join(PUBLIC, 'dk-mark-white.png'), await toWhiteTransparent(markWhite))
-  console.log('✓ dk-mark-white.png (sigle, blanc/transparent)')
+  const markBadge = await sharp(mark).resize({ width: 480 }).toBuffer()
+  fs.writeFileSync(path.join(PUBLIC, 'dk-mark-badge.png'), await renderBadge(markBadge))
+  console.log('✓ dk-mark-badge.png (sigle noir sur pastille blanche)')
+  const logoBadge = await sharp(lockup).resize({ width: 640 }).toBuffer()
+  fs.writeFileSync(
+    path.join(PUBLIC, 'dk-logo-badge.png'),
+    await renderBadge(logoBadge, { pad: 0.07, radius: 0.09 })
+  )
+  console.log('✓ dk-logo-badge.png (logo complet noir sur pastille blanche)')
 
   console.log('Tous les visuels de marque ont été générés.')
 }
