@@ -1,15 +1,25 @@
 import { useState } from 'react'
 
 // Logo DK Production.
-// Utilise le fichier /DK.jpeg s'il est présent dans le dossier public,
-// sinon se rabat sur une version SVG recréée (nette à toute taille).
-export default function DKLogo({ className = 'h-12 w-auto' }) {
+//   variant="dark"  → logo noir sur fond blanc (/DK.jpeg), pour les surfaces
+//                     claires : aperçu de facture, PDF, impression.
+//   variant="light" → logo blanc sur fond transparent (/dk-logo-white.png),
+//                     pour les surfaces sombres de l'application.
+// Les deux fichiers sont générés depuis le logo source par
+// `node generate-pwa-icons.cjs`. En cas d'image absente, repli sur un SVG.
+const SOURCES = {
+  dark: '/DK.jpeg',
+  light: '/dk-logo-white.png',
+}
+
+export default function DKLogo({ className = 'h-12 w-auto', variant = 'dark' }) {
   const [failed, setFailed] = useState(false)
+  const ink = variant === 'light' ? '#ffffff' : '#111111'
 
   if (!failed) {
     return (
       <img
-        src="/DK.jpeg"
+        src={SOURCES[variant] || SOURCES.dark}
         alt="DK Production"
         className={`${className} object-contain`}
         onError={() => setFailed(true)}
@@ -17,6 +27,7 @@ export default function DKLogo({ className = 'h-12 w-auto' }) {
     )
   }
 
+  // Repli vectoriel : sigle caméra « DK » + mot PRODUCTION.
   return (
     <svg
       viewBox="0 0 260 150"
@@ -25,31 +36,19 @@ export default function DKLogo({ className = 'h-12 w-auto' }) {
       role="img"
       aria-label="DK Production"
     >
-      {/* Bobines */}
-      <circle cx="70" cy="42" r="26" fill="#111111" />
-      <circle cx="34" cy="52" r="18" fill="#111111" />
-      {/* Corps de la caméra */}
-      <rect x="18" y="62" width="72" height="60" rx="8" fill="#111111" />
-      {/* Objectif */}
-      <path d="M90 78 L90 118 L128 98 Z" fill="#111111" />
-      {/* Viseur (coin blanc) */}
-      <path
-        d="M32 96 L32 78 L52 78"
-        stroke="#ffffff"
-        strokeWidth="5"
-        fill="none"
-        strokeLinecap="square"
-      />
-      {/* Texte */}
+      <circle cx="70" cy="42" r="26" fill={ink} />
+      <circle cx="34" cy="52" r="18" fill={ink} />
+      <rect x="18" y="62" width="72" height="60" rx="8" fill={ink} />
+      <path d="M90 78 L90 118 L128 98 Z" fill={ink} />
       <text
         x="146"
         y="104"
         fontSize="60"
         fontWeight="800"
-        fill="#111111"
+        fill={ink}
         fontFamily="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
       >
-        D-K
+        DK
       </text>
       <text
         x="130"
@@ -58,7 +57,7 @@ export default function DKLogo({ className = 'h-12 w-auto' }) {
         fontSize="25"
         fontWeight="700"
         letterSpacing="6"
-        fill="#111111"
+        fill={ink}
         fontFamily="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
       >
         PRODUCTION

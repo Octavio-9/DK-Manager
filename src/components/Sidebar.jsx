@@ -12,7 +12,6 @@ import {
   FolderOpen,
   Film,
   Rss,
-  Clapperboard,
   LogOut,
   Circle,
   X,
@@ -70,9 +69,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
         }`}
       >
         <div className="flex items-center gap-2 px-6 py-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-purple">
-            <Clapperboard size={20} className="text-white" />
-          </div>
+          <img src="/dk-mark-white.png" alt="DK Production" className="h-8 w-auto shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold leading-tight text-text-primary">DK Production</p>
             <p className="truncate text-xs leading-tight text-text-muted">Production Manager</p>

@@ -205,7 +205,7 @@ export default function MonthlyObjectivesBoard() {
       {/* En-tête */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <DKLogo className="h-11 w-auto shrink-0" />
+          <DKLogo className="h-11 w-auto shrink-0" variant="light" />
           <h2 className="text-sm font-bold uppercase tracking-wide text-text-primary sm:text-base">{title}</h2>
         </div>
         <div className="flex items-center gap-2">

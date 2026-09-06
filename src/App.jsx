@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, Link } from 'react-router-dom'
-import { Loader2, ShieldAlert, Clapperboard } from 'lucide-react'
+import { Loader2, ShieldAlert } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -29,9 +29,7 @@ function FullScreenLoader() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-dark">
       <div className="flex flex-col items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-purple">
-          <Clapperboard size={26} className="text-white" />
-        </div>
+        <img src="/dk-mark-white.png" alt="DK Production" className="h-12 w-auto" />
         <Loader2 size={24} className="animate-spin text-accent-purple" />
       </div>
     </div>

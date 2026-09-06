@@ -9,13 +9,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons.svg'],
+      includeAssets: ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icons.svg'],
       manifest: {
         name: 'DK Production Manager',
         short_name: 'DK Manager',
         description: 'Gestion de productions vidéo et photo — clients, projets, factures, planning',
-        theme_color: '#1a1825',
-        background_color: '#1a1825',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'any',
         scope: '/',

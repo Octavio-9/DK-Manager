@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Mail, Lock, Eye, EyeOff, Loader2, Clapperboard } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { inputClass, labelClass, btnPrimary, btnSecondary } from '../lib/ui'
 
@@ -55,9 +55,7 @@ export default function Login() {
 
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-purple">
-            <Clapperboard size={26} className="text-white" />
-          </div>
+          <img src="/dk-mark-white.png" alt="DK Production" className="mb-3 h-14 w-auto" />
           <h1 className="text-2xl font-bold text-text-primary">DK Production</h1>
           <p className="text-sm text-text-secondary">Production Manager</p>
         </div>
