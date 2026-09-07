@@ -1,7 +1,7 @@
-// Charge le logo /dk-logo.png en data URL s'il existe (sinon null → SVG de secours).
+// Charge le logo /DK.jpeg en data URL s'il existe (sinon null → SVG de secours).
 // Garde-fou : une SPA renvoie souvent index.html (200) pour un fichier manquant,
 // donc on vérifie que le type MIME est bien une image.
-async function loadLogoDataUrl() {
+async function fetchLogoDataUrl() {
   try {
     const res = await fetch('/DK.jpeg')
     if (!res.ok) return null
@@ -16,6 +16,23 @@ async function loadLogoDataUrl() {
   } catch {
     return null
   }
+}
+
+// Le logo n'est téléchargé et encodé en base64 qu'une seule fois par session :
+// sans ce cache, chaque génération de PDF refait un fetch + un encodage de ~87 Ko.
+let logoPromise = null
+function loadLogoDataUrl() {
+  if (!logoPromise) logoPromise = fetchLogoDataUrl()
+  return logoPromise
+}
+
+// Précharge le moteur PDF (module lourd, ~1,4 Mo) et le logo sans bloquer.
+// Appelé à l'ouverture de la page Facturation pour que le premier clic sur
+// « Télécharger » soit quasi instantané au lieu d'attendre le chargement.
+export function preloadInvoicePdf() {
+  import('@react-pdf/renderer').catch(() => {})
+  import('../components/InvoicePDF.jsx').catch(() => {})
+  loadLogoDataUrl()
 }
 
 // Dynamic imports — @react-pdf/renderer is loaded lazily on demand only,

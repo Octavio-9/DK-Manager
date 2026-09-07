@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, FileText, Search, Download, Printer, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, FileText, Search, Download, Printer, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatDate, formatCurrency } from '../lib/format'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
 import InvoicePreview from '../components/InvoicePreview'
 import { inputClass, labelClass, btnPrimary, btnSecondary, btnDanger } from '../lib/ui'
-import { downloadInvoicePDF, printInvoicePDF } from '../lib/invoicePdf'
+import { downloadInvoicePDF, printInvoicePDF, preloadInvoicePdf } from '../lib/invoicePdf'
 import { useAuth } from '../context/AuthContext'
 import { notifyRoles } from '../lib/notifications'
 import { syncInvoiceIncome } from '../lib/invoiceIncome'
@@ -131,7 +131,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
               title={`Imprimer ${docLabel.toLowerCase()}`}
               className="rounded-lg p-1.5 text-text-muted border border-c-border hover:bg-bg-hover hover:text-accent-purple transition-colors disabled:opacity-40"
             >
-              <Printer size={14} />
+              {printing ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
             </button>
             <button
               onClick={handleDownload}
@@ -139,7 +139,7 @@ function InvoiceRow({ invoice, onEdit, onGenerateReceipt }) {
               title="Télécharger PDF"
               className="rounded-lg p-1.5 text-text-muted border border-c-border hover:bg-bg-hover hover:text-accent-purple transition-colors disabled:opacity-40"
             >
-              <Download size={14} />
+              {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             </button>
             {can('update', 'invoices') && (
               <button
@@ -201,6 +201,10 @@ export default function Invoices() {
     const d = new Date()
     return new Date(d.getFullYear(), d.getMonth(), 1)
   })
+
+  // Précharge le moteur PDF et le logo dès l'ouverture de la page, pour que le
+  // premier « Télécharger » n'ait plus à attendre le chargement du module.
+  useEffect(() => { preloadInvoicePdf() }, [])
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],

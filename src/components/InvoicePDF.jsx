@@ -3,8 +3,14 @@
 import { Document, Page, Text, View, StyleSheet, Image, Svg, Circle, Rect, Path } from '@react-pdf/renderer'
 import { INVOICE_COMPANY as COMPANY, DEFAULT_PAYMENT_TERMS } from '../lib/constants'
 
+// Intl.NumberFormat('fr-FR') sépare les milliers avec une espace fine insécable
+// (U+202F). Les polices PDF standard (Helvetica / encodage WinAnsi) ne la
+// connaissent pas : elle s'affiche « / » et sa largeur fausse le placement des
+// textes. On la remplace donc par une espace ordinaire.
 function fmtNum(value) {
-  return new Intl.NumberFormat('fr-FR').format(Number(value) || 0)
+  return new Intl.NumberFormat('fr-FR')
+    .format(Number(value) || 0)
+    .replace(/\s/g, ' ')
 }
 
 function fmtGNF(value) {
