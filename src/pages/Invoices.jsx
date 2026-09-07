@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext'
 import { notifyRoles } from '../lib/notifications'
 import { syncInvoiceIncome } from '../lib/invoiceIncome'
 import { EnterpriseTotalsButton } from '../components/EnterpriseTotals'
+import { DEFAULT_PAYMENT_TERMS } from '../lib/constants'
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -29,8 +30,6 @@ const DOC_TYPE = {
   FACTURE: { label: 'Facture', color: '#9d3bf1' },
   RECU:    { label: 'Reçu',    color: '#10b981' },
 }
-
-const DEFAULT_PAYMENT_TERMS = 'Paiement sous 15 jours'
 
 const EMPTY_FORM = {
   documentType: 'FACTURE',
@@ -681,13 +680,16 @@ export default function Invoices() {
 
           <div>
             <label className={labelClass}>Conditions de paiement</label>
-            <input
-              type="text"
+            <textarea
+              rows={2}
               value={form.paymentTerms}
               onChange={(e) => setForm(f => ({ ...f, paymentTerms: e.target.value }))}
               className={inputClass}
-              placeholder="Ex : Paiement sous 15 jours"
+              placeholder="Mention affichée en bas du document…"
             />
+            <p className="mt-1 text-xs text-text-muted">
+              Pré-rempli avec la mention standard. Modifiable pour ce document uniquement.
+            </p>
           </div>
 
           {/* Items */}
@@ -807,11 +809,7 @@ export default function Invoices() {
               dueDate={form.dueDate}
               paymentTerms={form.paymentTerms}
               invoiceNumber={editingInvoice?.invoiceNumber}
-              dateLabel={
-                editingInvoice?.createdAt
-                  ? new Date(editingInvoice.createdAt).toLocaleDateString('fr-FR')
-                  : new Date().toLocaleDateString('fr-FR')
-              }
+              createdAt={editingInvoice?.createdAt}
             />
           </div>
         </div>

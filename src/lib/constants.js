@@ -137,3 +137,16 @@ export const TRANSACTION_TYPE_COLORS = {
 }
 
 export const TRANSACTION_TYPE_OPTIONS = ['INCOME', 'EXPENSE']
+
+/* ── Facturation : société émettrice & mentions par défaut ────── */
+export const INVOICE_COMPANY = {
+  name: 'DK PRODUCTION SARL',
+  city: 'Conakry, Guinée',
+  phone: '+224 614 42 66 13',
+  email: 'contact@dkproduction.space',
+}
+
+// Mention pré-remplie sur toute nouvelle facture / tout nouveau reçu.
+// Reste entièrement modifiable document par document (champ « Conditions de paiement »).
+export const DEFAULT_PAYMENT_TERMS =
+  "Paiement par Mobile Money (Orange Money / Wave) ou virement bancaire.\nMerci de régler la facture avant la date d'échéance indiquée ci-dessus."

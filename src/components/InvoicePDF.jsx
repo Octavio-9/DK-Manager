@@ -1,181 +1,241 @@
+// Document imprimé (facture / reçu) — mise en page « DK PRODUCTION SARL ».
+// L'aperçu HTML temps réel (InvoicePreview.jsx) reproduit fidèlement ce rendu.
 import { Document, Page, Text, View, StyleSheet, Image, Svg, Circle, Rect, Path } from '@react-pdf/renderer'
+import { INVOICE_COMPANY as COMPANY, DEFAULT_PAYMENT_TERMS } from '../lib/constants'
 
-const COMPANY = {
-  name: 'DK PRODUCTION',
-  phone: '611-14-43-34',
-  email: 'contact@dkproduction.space',
-  address: 'Fossidet rond-point',
+function fmtNum(value) {
+  return new Intl.NumberFormat('fr-FR').format(Number(value) || 0)
 }
 
 function fmtGNF(value) {
-  return new Intl.NumberFormat('fr-FR').format(Number(value) || 0) + ' GNF'
+  return fmtNum(value) + ' GNF'
+}
+
+function fmtLongDate(d) {
+  if (!d) return null
+  const dt = new Date(d)
+  if (Number.isNaN(dt.getTime())) return null
+  return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 const s = StyleSheet.create({
-  page:      { padding: 40, fontSize: 10, fontFamily: 'Helvetica', color: '#000000' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  titleWrap: { borderLeftWidth: 4, borderLeftColor: '#111111', paddingLeft: 12, flexShrink: 1, marginRight: 12 },
-  title:     { fontSize: 32, fontFamily: 'Helvetica-Bold', color: '#111111' },
-  titleSm:   { fontSize: 24 },
-  logoImg:   { width: 78, height: 78, objectFit: 'contain' },
-  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 5, width: 100, justifyContent: 'flex-end' },
-  camera:    { width: 34, height: 37 },
-  brandName: { fontSize: 15, fontFamily: 'Helvetica-Bold', color: '#111111' },
-  brandSub:  { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: 1.5, color: '#111111' },
-  metaRow:   { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  pill:      { borderRadius: 20, borderWidth: 1, borderColor: '#cccccc', paddingHorizontal: 12, paddingVertical: 4 },
-  pillTxt:   { fontSize: 10 },
-  divider:   { borderBottomWidth: 1, borderBottomColor: '#cccccc', marginBottom: 16 },
-  infoRow:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  infoLbl:   { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  infoTxt:   { fontSize: 9, color: '#444444', lineHeight: 1.5 },
-  attnLbl:   { fontSize: 10, fontFamily: 'Helvetica-Bold', textAlign: 'right', marginBottom: 4 },
-  attnTxt:   { fontSize: 9, color: '#444444', textAlign: 'right', lineHeight: 1.5 },
-  tHead:     { flexDirection: 'row', backgroundColor: '#000000', paddingVertical: 8, paddingHorizontal: 6 },
-  tHDesc:    { color: '#ffffff', fontSize: 9, fontFamily: 'Helvetica-Bold', flex: 2 },
-  tHCell:    { color: '#ffffff', fontSize: 9, fontFamily: 'Helvetica-Bold', flex: 1, textAlign: 'center' },
-  tRow:      { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#dddddd', paddingVertical: 8, paddingHorizontal: 6 },
-  tCDesc:    { fontSize: 9, flex: 2 },
-  tCell:     { fontSize: 9, flex: 1, textAlign: 'center' },
-  totalBar:  { backgroundColor: '#000000', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, marginTop: 2 },
-  totalLbl:  { color: '#ffffff', fontSize: 11, fontFamily: 'Helvetica-Bold', marginRight: 12 },
-  totalVal:  { color: '#ffffff', fontSize: 14, fontFamily: 'Helvetica-Bold' },
-  footerRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 32 },
-  paidBy:    { fontSize: 10, marginBottom: 20 },
-  condLbl:   { fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
-  condTxt:   { fontSize: 9, color: '#444444' },
-  sigZone:   { alignItems: 'center', width: 160 },
-  sigLine:   { borderTopWidth: 1, borderTopColor: '#000000', width: '100%', marginBottom: 4 },
-  sigTxt:    { fontSize: 9, textAlign: 'center' },
-  thanks:    { textAlign: 'center', fontSize: 10, fontFamily: 'Helvetica-Bold', borderTopWidth: 1, borderTopColor: '#cccccc', paddingTop: 12, marginTop: 24 },
+  page: {
+    paddingTop: 42,
+    paddingHorizontal: 44,
+    paddingBottom: 76,
+    fontSize: 9.5,
+    fontFamily: 'Helvetica',
+    color: '#111111',
+  },
+
+  /* En-tête : logo à gauche, titre + méta à droite */
+  headerRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  logoImg:    { width: 104, height: 52, objectFit: 'contain' },
+  logoSvgBox: { width: 104 },
+  logoSvg:    { width: 46, height: 50 },
+  logoWord:   { fontSize: 8, fontFamily: 'Helvetica-Bold', letterSpacing: 2, marginTop: 3 },
+  metaCol:    { alignItems: 'flex-end' },
+  title:      { fontSize: 27, fontFamily: 'Helvetica-Bold', letterSpacing: 3 },
+  titleSm:    { fontSize: 19, letterSpacing: 2 },
+  metaLine:   { fontSize: 8.5, color: '#666666', marginTop: 5 },
+  metaVal:    { fontFamily: 'Helvetica-Bold', color: '#111111' },
+
+  /* Bloc société sous le logo */
+  compBlock: { marginTop: 16 },
+  compName:  { fontSize: 9, fontFamily: 'Helvetica-Bold' },
+  compTxt:   { fontSize: 8.5, color: '#555555', marginTop: 2.5 },
+
+  rule: { borderBottomWidth: 2, borderBottomColor: '#111111', marginTop: 18, marginBottom: 22 },
+
+  /* Destinataire */
+  billLbl:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 1.6, color: '#888888' },
+  billName: { fontSize: 13, fontFamily: 'Helvetica-Bold', marginTop: 6 },
+  billTxt:  { fontSize: 8.5, color: '#555555', marginTop: 2.5 },
+
+  /* Tableau */
+  tHead:  { flexDirection: 'row', backgroundColor: '#111111', paddingVertical: 9, paddingHorizontal: 11, marginTop: 26 },
+  th:     { color: '#ffffff', fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.9 },
+  tRow:   { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e6e6e6', paddingVertical: 11, paddingHorizontal: 11 },
+  cDesc:  { flex: 1, paddingRight: 8 },
+  cQty:   { width: 46, textAlign: 'center' },
+  cUnit:  { width: 116, textAlign: 'right' },
+  cAmt:   { width: 106, textAlign: 'right' },
+  cTri:   { width: 108, textAlign: 'right' },
+  cell:   { fontSize: 9 },
+
+  /* Totaux */
+  totalsWrap: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 18 },
+  totalsBox:  { width: 268 },
+  totRow:     { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, paddingHorizontal: 11 },
+  totLbl:     { fontSize: 9, color: '#555555' },
+  totVal:     { fontSize: 9 },
+  totalBar:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111111', paddingVertical: 11, paddingHorizontal: 11, marginTop: 6 },
+  totalLbl:   { color: '#ffffff', fontSize: 10.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5 },
+  totalVal:   { color: '#ffffff', fontSize: 12.5, fontFamily: 'Helvetica-Bold' },
+
+  /* Conditions de paiement */
+  condWrap: { marginTop: 40 },
+  condLbl:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 1.4, color: '#111111', marginBottom: 6 },
+  condTxt:  { fontSize: 8.5, color: '#555555', lineHeight: 1.5 },
+
+  /* Pied de page */
+  footer:       { position: 'absolute', bottom: 34, left: 44, right: 44, borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 12 },
+  footerTxt:    { fontSize: 7.5, textAlign: 'center', color: '#777777' },
+  footerStrong: { fontFamily: 'Helvetica-Bold', color: '#555555' },
 })
 
 export default function InvoicePDF({ invoice, logoSrc }) {
   const client = invoice.clientRel || {}
   const clientName = invoice.clientRel?.name || invoice.clientName || '—'
-  const items  = invoice.items || []
+  const items = invoice.items || []
   const isReceipt = invoice.documentType === 'RECU'
+
   const billedTotal = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0)
   const paidTotal = items.reduce((sum, it) => sum + (Number(it.paid) || 0), 0)
   const grandTotal = isReceipt ? paidTotal : billedTotal
-  const createdDate = invoice.createdAt
-    ? new Date(invoice.createdAt).toLocaleDateString('fr-FR')
-    : '—'
-  const dueDate = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fr-FR') : null
+
+  const createdDate = fmtLongDate(invoice.createdAt) || fmtLongDate(new Date())
+  const dueDate = fmtLongDate(invoice.dueDate)
+
+  const termsLines = (invoice.paymentTerms?.trim() || DEFAULT_PAYMENT_TERMS).split('\n')
 
   return (
     <Document>
       <Page size="A4" style={s.page}>
 
+        {/* En-tête */}
         <View style={s.headerRow}>
-          <View style={s.titleWrap}>
-            <Text style={isReceipt ? [s.title, s.titleSm] : s.title}>
-              {isReceipt ? 'REÇU DE PAIEMENT' : 'FACTURE'}
-            </Text>
-          </View>
           {logoSrc ? (
             <Image src={logoSrc} style={s.logoImg} />
           ) : (
-            <View style={s.brandRow}>
-              <Svg viewBox="0 0 130 140" style={s.camera}>
+            <View style={s.logoSvgBox}>
+              <Svg viewBox="0 0 130 140" style={s.logoSvg}>
                 <Circle cx="70" cy="42" r="26" fill="#111111" />
                 <Circle cx="34" cy="52" r="18" fill="#111111" />
                 <Rect x="18" y="62" width="72" height="60" rx="8" fill="#111111" />
                 <Path d="M90 78 L90 118 L128 98 Z" fill="#111111" />
-                <Path d="M32 96 L32 78 L52 78" stroke="#ffffff" strokeWidth="5" fill="none" />
               </Svg>
-              <View>
-                <Text style={s.brandName}>D-K</Text>
-                <Text style={s.brandSub}>PRODUCTION</Text>
-              </View>
+              <Text style={s.logoWord}>PRODUCTION</Text>
             </View>
           )}
-        </View>
 
-        <View style={s.metaRow}>
-          <View style={s.pill}><Text style={s.pillTxt}>{isReceipt ? 'Reçu' : 'Facture'} n°{invoice.invoiceNumber}</Text></View>
-          <View style={s.pill}><Text style={s.pillTxt}>{createdDate}</Text></View>
-        </View>
-
-        <View style={s.divider} />
-
-        <View style={s.infoRow}>
-          <View>
-            <Text style={s.infoLbl}>{COMPANY.name}</Text>
-            <Text style={s.infoTxt}>{COMPANY.phone}</Text>
-            <Text style={s.infoTxt}>{COMPANY.email}</Text>
-            <Text style={s.infoTxt}>{COMPANY.address}</Text>
-          </View>
-          <View>
-            <Text style={s.attnLbl}>À L'ATTENTION DE</Text>
-            <Text style={s.attnTxt}>{clientName}</Text>
-            {client.phone ? <Text style={s.attnTxt}>{client.phone}</Text> : null}
-            {client.email ? <Text style={s.attnTxt}>{client.email}</Text> : null}
+          <View style={s.metaCol}>
+            <Text style={isReceipt ? [s.title, s.titleSm] : s.title}>
+              {isReceipt ? 'REÇU' : 'FACTURE'}
+            </Text>
+            <Text style={s.metaLine}>
+              N° <Text style={s.metaVal}>{invoice.invoiceNumber || '—'}</Text>
+            </Text>
+            <Text style={s.metaLine}>
+              Date <Text style={s.metaVal}>{createdDate}</Text>
+            </Text>
+            {dueDate ? (
+              <Text style={s.metaLine}>
+                Échéance <Text style={s.metaVal}>{dueDate}</Text>
+              </Text>
+            ) : null}
           </View>
         </View>
 
+        {/* Société émettrice */}
+        <View style={s.compBlock}>
+          <Text style={s.compName}>{COMPANY.name}</Text>
+          <Text style={s.compTxt}>{COMPANY.city}</Text>
+          <Text style={s.compTxt}>Tél : {COMPANY.phone}  |  Email : {COMPANY.email}</Text>
+        </View>
+
+        <View style={s.rule} />
+
+        {/* Destinataire */}
+        <View>
+          <Text style={s.billLbl}>{isReceipt ? 'REÇU DE' : 'FACTURÉ À'}</Text>
+          <Text style={s.billName}>{clientName}</Text>
+          {client.phone ? <Text style={s.billTxt}>{client.phone}</Text> : null}
+          {client.email ? <Text style={s.billTxt}>{client.email}</Text> : null}
+        </View>
+
+        {/* Tableau des prestations */}
         <View style={s.tHead}>
-          <Text style={s.tHDesc}>DESCRIPTION</Text>
+          <Text style={[s.th, s.cDesc]}>DESCRIPTION</Text>
           {isReceipt ? (
             <>
-              <Text style={s.tHCell}>PRIX</Text>
-              <Text style={s.tHCell}>PAYER</Text>
-              <Text style={s.tHCell}>RESTE</Text>
+              <Text style={[s.th, s.cTri]}>MONTANT (GNF)</Text>
+              <Text style={[s.th, s.cTri]}>PAYÉ (GNF)</Text>
+              <Text style={[s.th, s.cTri]}>RESTE (GNF)</Text>
             </>
           ) : (
             <>
-              <Text style={s.tHCell}>QTÉ</Text>
-              <Text style={s.tHCell}>P.U.</Text>
-              <Text style={s.tHCell}>TOTAL</Text>
+              <Text style={[s.th, s.cQty]}>QTÉ</Text>
+              <Text style={[s.th, s.cUnit]}>PRIX UNITAIRE (GNF)</Text>
+              <Text style={[s.th, s.cAmt]}>MONTANT (GNF)</Text>
             </>
           )}
         </View>
+
         {items.map((item, i) => {
           const lineTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1)
           const payer = Number(item.paid) || 0
           const reste = Math.max(0, lineTotal - payer)
           return (
-            <View key={i} style={s.tRow}>
-              <Text style={s.tCDesc}>{item.description}</Text>
+            <View key={i} style={s.tRow} wrap={false}>
+              <Text style={[s.cell, s.cDesc]}>{item.description || '—'}</Text>
               {isReceipt ? (
                 <>
-                  <Text style={s.tCell}>{fmtGNF(lineTotal)}</Text>
-                  <Text style={s.tCell}>{fmtGNF(payer)}</Text>
-                  <Text style={s.tCell}>{fmtGNF(reste)}</Text>
+                  <Text style={[s.cell, s.cTri]}>{fmtNum(lineTotal)}</Text>
+                  <Text style={[s.cell, s.cTri]}>{fmtNum(payer)}</Text>
+                  <Text style={[s.cell, s.cTri]}>{fmtNum(reste)}</Text>
                 </>
               ) : (
                 <>
-                  <Text style={s.tCell}>{Number(item.quantity) || 1}</Text>
-                  <Text style={s.tCell}>{fmtGNF(Number(item.price) || 0)}</Text>
-                  <Text style={s.tCell}>{fmtGNF(lineTotal)}</Text>
+                  <Text style={[s.cell, s.cQty]}>{Number(item.quantity) || 1}</Text>
+                  <Text style={[s.cell, s.cUnit]}>{fmtNum(Number(item.price) || 0)}</Text>
+                  <Text style={[s.cell, s.cAmt]}>{fmtNum(lineTotal)}</Text>
                 </>
               )}
             </View>
           )
         })}
 
-        <View style={s.totalBar}>
-          <Text style={s.totalLbl}>{isReceipt ? 'TOTAL PAYÉ :' : 'TOTAL À PAYER :'}</Text>
-          <Text style={s.totalVal}>{fmtGNF(grandTotal)}</Text>
-        </View>
-
-        <View style={s.footerRow}>
-          <View>
+        {/* Totaux */}
+        <View style={s.totalsWrap}>
+          <View style={s.totalsBox}>
+            <View style={s.totRow}>
+              <Text style={s.totLbl}>Sous-total</Text>
+              <Text style={s.totVal}>{fmtGNF(billedTotal)}</Text>
+            </View>
             {isReceipt ? (
-              <Text style={s.paidBy}>Paiement effectué par {clientName}</Text>
+              <View style={s.totRow}>
+                <Text style={s.totLbl}>Reste à payer</Text>
+                <Text style={s.totVal}>{fmtGNF(Math.max(0, billedTotal - paidTotal))}</Text>
+              </View>
             ) : (
-              <Text style={s.paidBy}>{dueDate ? `À régler avant le ${dueDate}` : 'À régler dès réception'}</Text>
+              <View style={s.totRow}>
+                <Text style={s.totLbl}>TVA</Text>
+                <Text style={s.totVal}>—</Text>
+              </View>
             )}
-            <Text style={s.condLbl}>Conditions de paiement</Text>
-            <Text style={s.condTxt}>{invoice.paymentTerms?.trim() || 'Paiement sous 15 jours'}</Text>
-          </View>
-          <View style={s.sigZone}>
-            <View style={s.sigLine} />
-            <Text style={s.sigTxt}>Le Directeur Général</Text>
+            <View style={s.totalBar}>
+              <Text style={s.totalLbl}>{isReceipt ? 'TOTAL PAYÉ' : 'TOTAL À PAYER'}</Text>
+              <Text style={s.totalVal}>{fmtGNF(grandTotal)}</Text>
+            </View>
           </View>
         </View>
 
-        <Text style={s.thanks}>MERCI DE VOTRE CONFIANCE</Text>
+        {/* Conditions de paiement (modifiables document par document) */}
+        <View style={s.condWrap}>
+          <Text style={s.condLbl}>CONDITIONS DE PAIEMENT</Text>
+          {termsLines.map((line, i) => (
+            <Text key={i} style={s.condTxt}>{line}</Text>
+          ))}
+        </View>
+
+        {/* Pied de page */}
+        <View style={s.footer} fixed>
+          <Text style={s.footerTxt}>
+            <Text style={s.footerStrong}>{COMPANY.name}</Text>
+            {'  •  '}{COMPANY.city}{'  •  '}Merci de votre confiance
+          </Text>
+        </View>
       </Page>
     </Document>
   )
